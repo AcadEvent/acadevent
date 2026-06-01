@@ -1,0 +1,56 @@
+services:
+  # Camada de Dados (PostgreSQL 17) - RNF07.4
+  postgres:
+    image: postgres:17-alpine
+    container_name: acadevent_postgres
+    environment:
+      POSTGRES_USER: acadevent_admin
+      POSTGRES_PASSWORD: acadevent_local_pwd
+      POSTGRES_DB: acadevent_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - .postgres-data:/var/lib/postgresql/data
+    networks:
+      - acadevent_network
+  
+  # Camada de Lógica (Backend NestJS) - RNF07.1
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: acadevent_backend
+    volumes:
+      - ./backend:/usr/src/app
+      - /usr/src/app/node_modules # Pra impedir que o node_modules local sobrescreva do container
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: "postgresql://acadevent_admin:acadevent_local_pwd@postgres:5432/acadevent_db?schema=public"
+    depends_on:
+      - postgres
+    networks:
+      - acadevent_network
+  
+  # Camada de Apresentação (Frontend Next.js) - RNF07.1
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: acadevent_frontend
+    volumes:
+      - ./frontend:/usr/src/app
+      - /usr/src/app/node_modules
+    ports:
+      - "3001:3001"
+    environment:
+      HOSTNAME: 0.0.0.0 # Pra aceitar conexões fora do container
+      PORT: 3001        # Força o Next.js a rodar na porta 3001 interna
+    networks:
+      - acadevent_network
+  
+# Criação de uma rede isolada do tipo bridge pra comunicação interna segura dos containers
+networks:
+  acadevent_network:
+    driver: bridge
+    

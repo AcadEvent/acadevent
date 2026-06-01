@@ -1,0 +1,20 @@
+FROM node:20-alpine
+
+WORKDIR /usr/src/app
+
+# Otimiza cache do Docker copiando apenas arquivos de definição de dep
+COPY package*.json ./
+
+# Instala todas as dependências no container
+RUN npm install
+
+# Copia o restante do código da aplicação
+COPY . .
+
+# Gera o Prisma Client nativamente dentro do ambiente Linux do container
+RUN npx prisma generate
+
+EXPOSE 3000
+
+# Roda o NestJS em modo de observação (hot-reload: alterou o código na máquina, atualiza o Docker)
+CMD [ "npm", "run", "start:dev" ]

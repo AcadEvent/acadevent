@@ -1,0 +1,40 @@
+# Dependências de Node (tanto frontend quanto backend)
+node_modules/
+
+# Builds e arquivos gerados compilados
+dist/
+.next/
+build/
+out/
+
+# Variáveis de ambiente e credenciais sensíveis (nunca versionar)
+.env
+.env.local
+.env.production
+.env.development
+.env.local.workspace
+
+# Logs do sistema
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Banco de dados e Docker volumes locais (impede que os dados locais do Postgres subam pro Git)
+pgdata/
+.docker/
+
+.postgres-data/
+pgdata/
+.docker/
+
+# Arquivos de configuração de IDEs locais
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Arquivos do sistema operacional
+.DS_Store
+Thumbs.db
