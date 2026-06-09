@@ -76,7 +76,7 @@ Siga rigorosamente as instruções abaixo para clonar e rodar o projeto localmen
 Use sempre a URL **SSH** para clonar de forma segura sem requisições repetitivas de tokens:
 
 ```bash
-git clone git@github.com:sua-organizacao/acadevent.git
+git clone git@github.com:AcadEvent/acadevent.git
 cd acadevent
 
 ```
