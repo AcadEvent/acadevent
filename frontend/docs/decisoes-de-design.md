@@ -1,15 +1,41 @@
 # Decisões de Design — Frontend AcadEvent
 
-Versão: 0.1  
-Data: 2026-06-09  
+Versão: 0.2  
+Data: 2026-06-09 (rev. 2026-06-18)  
 Autor: João Vitor Antunes da Silva (SPM)  
-Revisores: —
+Revisores: - 
 
 ---
 
 Documento vivo das decisões visuais e de componentes do frontend. Objetivo: permitir implementação consistente sem reabrir discussões já fechadas.
 
 Padrão de autoria e revisão: [docs/padrao-de-documentacao.md](../../docs/padrao-de-documentacao.md).
+
+---
+
+## Decisão de stack UI: Material UI (MUI)
+
+**Status:** Proposta - pendente de aprovação do time.  
+**Autor** Guilherme Zanan Piveta (SFE)
+**Data:** 2026-06-18.
+
+Adotar [Material UI (MUI)](https://mui.com/material-ui/) como biblioteca de componentes e sistema de tema do frontend. Pacotes: `@mui/material`, `@emotion/react`, `@emotion/styled`, `@mui/icons-material` e `@mui/x-date-pickers`.
+
+**O que essa decisão resolve diretamente:** abordagem de componentes, ícones, datas/calendário, escala de espaçamento, breakpoints, border radius, sombras, tokens de cor, escala tipográfica e a biblioteca base de componentes (Fases 1 e 2) — ver linhas marcadas como **Decidido (MUI)** abaixo.
+
+**O que MUI _não_ decide (continua pendente):**
+
+- Valor da cor primária da marca (MUI calcula hover/active/contraste a partir dela, mas a cor em si é escolha do time).
+- Se haverá modo escuro na Fase 1 (MUI suporta nativamente; a decisão de _quando_ é nossa).
+- Manter Geist ou usar Roboto (padrão MUI) como fonte.
+- Estado e validação de formulário (MUI fornece os campos; lógica fica com react-hook-form + zod).
+- Páginas, jornadas e componentes de domínio (§3 e §4.3).
+- Nível-alvo de acessibilidade, validador de contraste e governança (§5 e §6).
+
+**Notas de mapeamento:**
+
+- `Badge` (rótulo de status, ex.: `EnrollmentStatusBadge`) → usar **`Chip`** do MUI. O `Badge` do MUI é o indicador de contador/notificação.
+- `Section` e `PageHeader` não têm componente próprio no MUI — compor com `Box`/`Stack`/`Typography`.
 
 ---
 
@@ -29,11 +55,11 @@ Padrão de autoria e revisão: [docs/padrao-de-documentacao.md](../../docs/padra
 
 | Decisão | Escolha | Status | Data | Notas |
 | --- | --- | --- | --- | --- |
-| Abordagem de componentes | _A definir_ (ex.: shadcn/ui + Radix + Tailwind) | Pendente | — | |
-| Primitivos headless | _A definir_ (ex.: Radix UI / Headless UI) | Pendente | — | |
-| Ícones | _A definir_ (ex.: lucide-react) | Pendente | — | |
-| Formulários | _A definir_ (ex.: react-hook-form + zod) | Pendente | — | |
-| Datas / calendário | _A definir_ (ex.: react-day-picker) | Pendente | — | |
+| Abordagem de componentes | Material UI (`@mui/material`) | Decidido (MUI) | 2026-06-18 | Componentes estilizados (Material Design); tema via `@emotion`. |
+| Primitivos headless | Não aplicável | Decidido (MUI) | 2026-06-18 | MUI é estilizado, não headless; dispensa lib headless separada. Se necessário, usar Base UI. |
+| Ícones | `@mui/icons-material` | Decidido (MUI) | 2026-06-18 | |
+| Formulários | MUI (campos) + react-hook-form + zod | Parcial | 2026-06-18 | MUI fornece os campos; estado/validação ficam com react-hook-form + zod. |
+| Datas / calendário | `@mui/x-date-pickers` | Decidido (MUI) | 2026-06-18 | DatePicker / DateRangePicker. |
 
 ### Critérios de reuso vs criação
 
@@ -47,23 +73,25 @@ Padrão de autoria e revisão: [docs/padrao-de-documentacao.md](../../docs/padra
 
 ### 2.1 Cores
 
-| Token | Valor | Uso | Status |
+Tokens mapeados para a paleta do tema MUI. Os valores derivam do tema; a cor de marca ainda precisa ser definida (MUI calcula as variações automaticamente).
+
+| Token | Mapeamento MUI | Uso | Status |
 | --- | --- | --- | --- |
-| `primary` | _A definir_ | Ações principais, links de destaque | Pendente |
-| `primary-hover` | _A definir_ | Hover em botões e links primários | Pendente |
-| `background` | _A definir_ | Fundo da aplicação | Pendente |
-| `foreground` | _A definir_ | Texto principal | Pendente |
-| `muted` | _A definir_ | Texto secundário, placeholders | Pendente |
-| `success` | _A definir_ | Confirmações, estados positivos | Pendente |
-| `warning` | _A definir_ | Alertas não críticos | Pendente |
-| `error` | _A definir_ | Erros, ações destrutivas | Pendente |
-| `info` | _A definir_ | Informações neutras | Pendente |
+| `primary` | `palette.primary.main` | Ações principais, links de destaque | Valor de marca pendente |
+| `primary-hover` | `palette.primary.dark` / overlay de hover | Hover em botões e links primários | Decidido (MUI) |
+| `background` | `palette.background.default` | Fundo da aplicação | Decidido (MUI) |
+| `foreground` | `palette.text.primary` | Texto principal | Decidido (MUI) |
+| `muted` | `palette.text.secondary` | Texto secundário, placeholders | Decidido (MUI) |
+| `success` | `palette.success.main` | Confirmações, estados positivos | Decidido (MUI) |
+| `warning` | `palette.warning.main` | Alertas não críticos | Decidido (MUI) |
+| `error` | `palette.error.main` | Erros, ações destrutivas | Decidido (MUI) |
+| `info` | `palette.info.main` | Informações neutras | Decidido (MUI) |
 
 **Perguntas em aberto**
 
-- [ ] Cor primária da marca e variações (hover, active, contraste)?
-- [ ] Contraste mínimo: WCAG AA?
-- [ ] Modo escuro na Fase 1 ou fase posterior?
+- [ ] Cor primária da marca? (MUI deriva hover/active/contraste a partir dela.)
+- [ ] Contraste mínimo: WCAG AA? (MUI calcula `contrastText`; padrão já mira AA, mas o alvo é decisão do time.)
+- [ ] Modo escuro na Fase 1 ou fase posterior? (MUI suporta via `palette.mode`; decidir _quando_.)
 
 ### 2.2 Tipografia
 
