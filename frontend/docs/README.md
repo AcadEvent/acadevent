@@ -16,6 +16,7 @@ A formatação destes documentos segue o [padrão de documentação do projeto](
 | Documento | Conteúdo |
 | --- | --- |
 | [decisoes-de-design.md](./decisoes-de-design.md) | Decisões centrais: stack, identidade visual, páginas, componentes e acessibilidade |
+| [mapa-de-paginas.md](./mapa-de-paginas.md) | Inventário de rotas/páginas do frontend, mapeadas aos requisitos (RF) |
 
 ## Status
 
