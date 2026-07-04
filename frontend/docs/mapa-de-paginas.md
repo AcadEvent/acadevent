@@ -3,7 +3,7 @@
 Versão: 0.1  
 Data: 2026-06-20  
 Autor: Guilherme Zanan Piveta (SFE)  
-Revisores: —
+Revisores: Kauan Henrick (SFE), Arthur Kenji Murakami (SFE), Igor Roberto Michalski de Souza (SFE)
 
 ---
 
