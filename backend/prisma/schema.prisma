@@ -1,13 +1,421 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
-generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
-}
+// backend/prisma/schema.prisma
 
 datasource db {
-  provider = "postgresql"
+  provider = "postgresql" // 🔥 Sem a linha da URL aqui, o Prisma 7 vai ler do config.ts
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ==========================================
+// 1. NÚCLEO DE USUÁRIOS E PERFIS
+// ==========================================
+
+model Usuario {
+  id_usuario                 Int                    @id @default(autoincrement())
+  nome                       String                 @db.VarChar(255)
+  email                      String                 @unique @db.VarChar(255)
+  senha_hash                 String                 @db.VarChar(255)
+  url_foto                   String?                @db.Text
+  token_recuperacao          String?                @db.VarChar(255)
+  validade_token_recuperacao DateTime?              @db.Timestamp
+  notificacoes               Notificacao[]
+  perfis                     PerfilUsuario[]
+  administrador              PerfilAdministrador?
+  organizador                PerfilOrganizador?
+  ministrante                PerfilMinistrante?
+  participante               PerfilParticipante?
+  parecerista                PerfilParecerista?
+  autor                      PerfilAutor?
+  certificados               Certificado[]
+
+  @@map("usuario")
+}
+
+model Notificacao {
+  id_notificacao Int      @id @default(autoincrement())
+  id_usuario     Int
+  titulo         String   @db.VarChar(255)
+  mensagem       String   @db.Text
+  data           DateTime? @default(now()) @db.Timestamp
+  usuario        Usuario  @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
+
+  @@map("notificacao")
+}
+
+model PerfilUsuario {
+  id_perfil   Int     @id @default(autoincrement())
+  id_usuario  Int
+  tipo_perfil String  @db.VarChar(100)
+  usuario     Usuario @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
+
+  @@map("perfil_usuario")
+}
+
+model PerfilAdministrador {
+  id_administrador Int     @id @default(autoincrement())
+  id_usuario       Int     @unique
+  usuario          Usuario @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
+
+  @@map("perfil_administrador")
+}
+
+model PerfilOrganizador {
+  id_organizador Int      @id @default(autoincrement())
+  id_usuario     Int      @unique
+  usuario        Usuario  @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
+  eventos        Evento[]
+
+  @@map("perfil_organizador")
+}
+
+model PerfilMinistrante {
+  id_ministrante     Int                   @id @default(autoincrement())
+  id_usuario         Int                   @unique
+  biografia          String?               @db.Text
+  area_atuacao       String?               @db.VarChar(150)
+  instituicao_origem String?               @db.VarChar(255)
+  url_foto           String?               @db.Text
+  atividades         AtividadeMinistrante[]
+  registros          RegistroInventario[]
+  usuario            Usuario               @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
+
+  @@map("perfil_ministrante")
+}
+
+model PerfilParticipante {
+  id_participante Int               @id @default(autoincrement())
+  id_usuario      Int               @unique
+  usuario         Usuario           @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
+  inscricoes      InscricaoEdicao[]
+
+  @@map("perfil_participante")
+}
+
+model PerfilParecerista {
+  id_parecerista Int        @id @default(autoincrement())
+  id_usuario     Int        @unique
+  usuario        Usuario    @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
+  correcoes      Correcao[]
+
+  @@map("perfil_parecerista")
+}
+
+model PerfilAutor {
+  id_autor    Int         @id @default(autoincrement())
+  id_usuario  Int         @unique
+  usuario     Usuario     @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
+  submissoes  Submissao[]
+
+  @@map("perfil_autor")
+}
+
+// ==========================================
+// 2. ESTRUTURA DE EVENTOS E COMISSÕES
+// ==========================================
+
+model Evento {
+  id_evento       Int               @id @default(autoincrement())
+  id_organizador  Int
+  nome_marca      String            @db.VarChar(255)
+  descricao_geral String?           @db.Text
+  organizador     PerfilOrganizador @relation(fields: [id_organizador], references: [id_organizador])
+  edicoes         Edicao[]
+
+  @@map("evento")
+}
+
+model Edicao {
+  id_edicao                    Int             @id @default(autoincrement())
+  id_evento                    Int
+  titulo_oficial               String          @db.VarChar(255)
+  numero_edicao                String?         @db.VarChar(50)
+  sigla                        String?         @db.VarChar(50)
+  unidade_promotora            String?         @db.VarChar(255)
+  area_tematica                String?         @db.VarChar(150)
+  descricao_geral              String?         @db.Text
+  url_logotipo                 String?         @db.Text
+  publico_alvo                 String?         @db.VarChar(255)
+  url_rede_social              String?         @db.Text
+  url_site                     String?         @db.Text
+  data_abertura_evento         DateTime?       @db.Timestamp
+  data_encerramento_evento     DateTime?       @db.Timestamp
+  data_encerramento_submissoes DateTime?       @db.Timestamp
+  status_evento                String?         @default("Ativo") @db.VarChar(100)
+  capacidade_max_participantes Int?
+  endereco                     String?         @db.Text
+  evento                       Evento          @relation(fields: [id_evento], references: [id_evento], onDelete: Cascade)
+  gruposTrabalho               GrupoTrabalho[]
+
+  @@map("edicao")
+}
+
+model GrupoTrabalho {
+  id_grupo  Int              @id @default(autoincrement())
+  id_edicao Int
+  nome      String           @db.VarChar(255)
+  sigla     String?          @db.VarChar(50)
+  edicao    Edicao           @relation(fields: [id_edicao], references: [id_edicao], onDelete: Cascade)
+  comissoes PerfilComissao[]
+
+  @@map("grupo_trabalho")
+}
+
+model PerfilComissao {
+  id_comissao  Int           @id @default(autoincrement())
+  id_grupo     Int
+  funcao_geral String?       @db.VarChar(255)
+  grupo        GrupoTrabalho @relation(fields: [id_grupo], references: [id_grupo])
+  turnos       Turno[]
+
+  @@map("perfil_comissao")
+}
+
+model Turno {
+  id_turno            Int            @id @default(autoincrement())
+  id_comissao         Int
+  data_inicio_turno   DateTime?      @db.Timestamp
+  data_final_turno    DateTime?      @db.Timestamp
+  funcao_desempenhada String?        @db.VarChar(255)
+  presenca_confirmada String?        @db.VarChar(50)
+  comissao            PerfilComissao @relation(fields: [id_comissao], references: [id_comissao])
+
+  @@map("turno")
+}
+
+// ==========================================
+// 3. CORE DA SPRINT (RF04, RF05, RF07, RF08)
+// ==========================================
+
+model LoteIngresso {
+  id_lote                 Int                @id @default(autoincrement())
+  id_edicao               Int
+  nome_lote               String             @db.VarChar(150)
+  data_abertura_lote      DateTime?          @db.Timestamp
+  data_encerramento_lote  DateTime?          @db.Timestamp
+  preco                   Decimal            @db.Decimal(10, 2)
+  numero_max_ingressos    Int
+  inscricoes              InscricaoEdicao[]
+
+  @@map("lote_ingresso")
+}
+
+model Cupom {
+  id_cupom            Int                @id @default(autoincrement())
+  id_edicao           Int
+  codigo              String             @unique @db.VarChar(50)
+  percentual_desconto Int
+  limite_usos         Int
+  quantidade_uso      Int                @default(0)
+  inscricoes          InscricaoEdicao[]
+
+  @@map("cupom")
+}
+
+model InscricaoEdicao {
+  id_inscricao_edicao  Int                @id @default(autoincrement())
+  id_participante      Int
+  id_cupom             Int?
+  id_lote              Int
+  status               String             @default("Pendente") @db.VarChar(100)
+  url_qrcode           String?            @db.Text
+  participante         PerfilParticipante @relation(fields: [id_participante], references: [id_participante])
+  lote                 LoteIngresso       @relation(fields: [id_lote], references: [id_lote])
+  cupom                Cupom?             @relation(fields: [id_cupom], references: [id_cupom])
+  pagamentos           Pagamento[]
+  inscricoesAtividades InscricaoAtividade[]
+
+  @@map("inscricao_edicao")
+}
+
+model Pagamento {
+  id_pagamento        Int             @id @default(autoincrement())
+  id_inscricao_edicao Int
+  status              String?         @db.VarChar(100)
+  url_recibo          String?         @db.Text
+  valor               Decimal         @db.Decimal(10, 2)
+  data_pagamento      DateTime?       @db.Timestamp
+  gateway_id          String?         @db.VarChar(255)
+  metodo_pagamento    String?         @db.VarChar(100)
+  inscricao           InscricaoEdicao @relation(fields: [id_inscricao_edicao], references: [id_inscricao_edicao], onDelete: Cascade)
+
+  @@map("pagamento")
+}
+
+model Atividade {
+  id_atividade                Int                  @id @default(autoincrement())
+  id_edicao                   Int
+  titulo                      String               @db.VarChar(255)
+  tipo_atividade              String?              @db.VarChar(100)
+  descricao                   String?              @db.Text
+  carga_horario               Int
+  data_abertura_atividade     DateTime?            @db.Timestamp
+  data_encerramento_atividade DateTime?            @db.Timestamp
+  reservas                    Reserva[]
+  inscricoesAtividades        InscricaoAtividade[]
+  presencas                   Presenca[]
+  atividadesMinistrantes      AtividadeMinistrante[]
+
+  @@map("atividade")
+}
+
+model EspacoFisico {
+  id_espaco                     Int       @id @default(autoincrement())
+  id_edicao                     Int
+  tipo_espaco                   String?   @db.VarChar(100)
+  descricao_local               String?   @db.Text
+  instituicao                   String?   @db.VarChar(255)
+  nome_sala                     String?   @db.VarChar(150)
+  capacidade_max                Int
+  descricao_recursos_disponiveis String?   @db.Text
+  reservas                      Reserva[]
+
+  @@map("espaco_fisico")
+}
+
+model Reserva {
+  id_reserva   Int          @id @default(autoincrement())
+  id_atividade Int          @db.Integer
+  id_espaco    Int          @db.Integer
+  data_inicio  DateTime?    @db.Timestamp
+  data_final   DateTime?    @db.Timestamp
+  atividade    Atividade    @relation(fields: [id_atividade], references: [id_atividade], onDelete: Cascade)
+  espaco       EspacoFisico @relation(fields: [id_espaco], references: [id_espaco])
+
+  @@map("reserva")
+}
+
+model ItemInventarioFisico {
+  id_item               Int                  @id @default(autoincrement())
+  id_edicao             Int
+  tipo_item             String?              @db.VarChar(100)
+  quantidade_total      Int
+  quantidade_disponivel Int
+  quantidade_minima     Int
+  descricao             String?              @db.Text
+  registros             RegistroInventario[]
+
+  @@map("item_inventario_fisico")
+}
+
+model RegistroInventario {
+  id_registro_item    Int                  @id @default(autoincrement())
+  id_item             Int
+  id_organizador      Int
+  id_ministrante      Int?
+  data_retirada       DateTime             @db.Timestamp
+  data_entrega        DateTime?            @db.Timestamp
+  status              String?              @db.VarChar(100)
+  quantidade_retirada Int
+  item                ItemInventarioFisico @relation(fields: [id_item], references: [id_item])
+  ministrante         PerfilMinistrante?   @relation(fields: [id_ministrante], references: [id_ministrante])
+
+  @@map("registro_inventario")
+}
+
+model InscricaoAtividade {
+  id_inscricao_atividade Int             @id @default(autoincrement())
+  id_inscricao_edicao    Int
+  id_atividade           Int
+  status                 String?         @db.VarChar(100)
+  inscricaoEdicao        InscricaoEdicao @relation(fields: [id_inscricao_edicao], references: [id_inscricao_edicao], onDelete: Cascade)
+  atividade              Atividade       @relation(fields: [id_atividade], references: [id_atividade])
+  presencas              Presenca[]
+
+  @@map("inscricao_atividade")
+}
+
+model Presenca {
+  id_presenca            Int                @id @default(autoincrement())
+  id_inscricao_atividade Int
+  id_atividade           Int
+  data                   DateTime?          @default(now()) @db.Timestamp
+  status                 String?            @db.VarChar(50)
+  inscricaoAtividade     InscricaoAtividade @relation(fields: [id_inscricao_atividade], references: [id_inscricao_atividade], onDelete: Cascade)
+  atividade              Atividade          @relation(fields: [id_atividade], references: [id_atividade])
+
+  @@map("presenca")
+}
+
+model Certificado {
+  id_certificado         Int        @id @default(autoincrement())
+  id_edicao              Int
+  id_atividade           Int?
+  id_usuario             Int
+  tipo_participacao      String?    @db.VarChar(100)
+  nome_atividade         String?    @db.VarChar(255)
+  codigo_autenticidade   String?    @unique @db.VarChar(100)
+  carga_horaria_impressa String?    @db.VarChar(50)
+  usuario                Usuario    @relation(fields: [id_usuario], references: [id_usuario])
+
+  @@map("certificado")
+}
+
+model AtividadeMinistrante {
+  id_atividade_ministrante Int               @id @default(autoincrement())
+  id_atividade             Int
+  id_ministrante           Int
+  atividade                Atividade         @relation(fields: [id_atividade], references: [id_atividade], onDelete: Cascade)
+  ministrante              PerfilMinistrante @relation(fields: [id_ministrante], references: [id_ministrante])
+
+  @@map("atividade_ministrante")
+}
+
+model Anais {
+  id_anais        Int                 @id @default(autoincrement())
+  id_edicao       Int
+  data_lancamento DateTime?           @db.Timestamp
+  trabalhos       TrabalhoAcademico[]
+
+  @@map("anais")
+}
+
+model TrabalhoAcademico {
+  id_trabalho           Int               @id @default(autoincrement())
+  id_anais              Int?
+  titulo                String            @db.VarChar(255)
+  area_tematica         String?           @db.VarChar(150)
+  url_arquivo_pdf       String?           @db.Text
+  numero_apresentadores Int?
+  anais                 Anais?            @relation(fields: [id_anais], references: [id_anais])
+  submissoes            Submissao[]
+  avaliacoes            Avaliacao[]
+
+  @@map("trabalho_academico")
+}
+
+model Submissao {
+  id_submissao Int               @id @default(autoincrement())
+  id_autor     Int
+  id_trabalho  Int
+  autor        PerfilAutor       @relation(fields: [id_autor], references: [id_autor])
+  trabalho     TrabalhoAcademico @relation(fields: [id_trabalho], references: [id_trabalho], onDelete: Cascade)
+
+  @@map("submissao")
+}
+
+model Avaliacao {
+  id_avaliacao      Int               @id @default(autoincrement())
+  id_trabalho       Int
+  status            String?           @db.VarChar(100)
+  descricao_parecer String?           @db.Text
+  nota              Decimal?          @db.Decimal(5, 2)
+  data_avaliacao    DateTime?         @db.Timestamp
+  data_submissao    DateTime?         @db.Timestamp
+  data_aprovacao    DateTime?         @db.Timestamp
+  trabalho          TrabalhoAcademico @relation(fields: [id_trabalho], references: [id_trabalho], onDelete: Cascade)
+  correcoes         Correcao[]
+
+  @@map("avaliacao")
+}
+
+model Correcao {
+  id_correcao    Int               @id @default(autoincrement())
+  id_parecerista Int
+  id_avaliacao   Int
+  parecerista    PerfilParecerista @relation(fields: [id_parecerista], references: [id_parecerista])
+  avaliacao      Avaliacao         @relation(fields: [id_avaliacao], references: [id_avaliacao], onDelete: Cascade)
+
+  @@map("correcao")
 }
