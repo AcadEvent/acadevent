@@ -8,11 +8,76 @@ import { Prisma, Cupom } from '@prisma/client';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CriarInscricaoDto } from './dto/criar-inscricao.dto';
+import { CriarLoteDto } from './dto/criar-lote.dto';
+import { CriarCupomDto } from './dto/criar-cupom.dto';
 import { WebhookPagamentoDto } from '../pagamentos/dto/webhook-pagamento.dto';
 
 @Injectable()
 export class InscricoesService {
   constructor(private readonly prisma: PrismaService) {}
+
+  async criarLote(dto: CriarLoteDto) {
+    const edicao = await this.prisma.edicao.findUnique({
+      where: { id_edicao: dto.id_edicao },
+    });
+
+    if (!edicao) {
+      throw new NotFoundException('Edicao do evento nao encontrada.');
+    }
+
+    return this.prisma.loteIngresso.create({
+      data: {
+        id_edicao: dto.id_edicao,
+        nome_lote: dto.nome_lote,
+        data_abertura_lote: dto.data_abertura_lote,
+        data_encerramento_lote: dto.data_encerramento_lote,
+        preco: new Prisma.Decimal(dto.preco),
+        numero_max_ingressos: dto.numero_max_ingressos,
+      },
+    });
+  }
+
+  async listarLotesPorEdicao(idEdicao: number) {
+    return this.prisma.loteIngresso.findMany({
+      where: { id_edicao: idEdicao },
+      orderBy: { id_lote: 'asc' },
+    });
+  }
+
+  async criarCupom(dto: CriarCupomDto) {
+    const edicao = await this.prisma.edicao.findUnique({
+      where: { id_edicao: dto.id_edicao },
+    });
+
+    if (!edicao) {
+      throw new NotFoundException('Edicao do evento nao encontrada.');
+    }
+
+    const cupomExistente = await this.prisma.cupom.findUnique({
+      where: { codigo: dto.codigo },
+    });
+
+    if (cupomExistente) {
+      throw new BadRequestException('Ja existe um cupom cadastrado com este codigo.');
+    }
+
+    return this.prisma.cupom.create({
+      data: {
+        id_edicao: dto.id_edicao,
+        codigo: dto.codigo,
+        percentual_desconto: dto.percentual_desconto,
+        limite_usos: dto.limite_usos,
+        quantidade_uso: 0,
+      },
+    });
+  }
+
+  async listarCuponsPorEdicao(idEdicao: number) {
+    return this.prisma.cupom.findMany({
+      where: { id_edicao: idEdicao },
+      orderBy: { id_cupom: 'asc' },
+    });
+  }
 
   async criarInscricao(usuarioId: number, dto: CriarInscricaoDto) {
     const lote = await this.prisma.loteIngresso.findUnique({
@@ -20,13 +85,13 @@ export class InscricoesService {
     });
 
     if (!lote) {
-      throw new NotFoundException('Lote de ingresso não encontrado.');
+      throw new NotFoundException('Lote de ingresso nao encontrado.');
     }
 
     const dataAtual = new Date();
     if (lote.data_abertura_lote && dataAtual < lote.data_abertura_lote) {
       throw new BadRequestException(
-        'O lote ainda não está aberto para inscrições.',
+        'O lote ainda nao esta aberto para inscricoes.',
       );
     }
     if (
@@ -34,7 +99,7 @@ export class InscricoesService {
       dataAtual > lote.data_encerramento_lote
     ) {
       throw new BadRequestException(
-        'O lote já está encerrado para inscrições.',
+        'O lote ja esta encerrado para inscricoes.',
       );
     }
 
@@ -47,7 +112,7 @@ export class InscricoesService {
 
     if (inscricoesAtivas >= lote.numero_max_ingressos) {
       throw new BadRequestException(
-        'Limite máximo de ingressos deste lote atingido.',
+        'Limite maximo de ingressos deste lote atingido.',
       );
     }
 
@@ -57,7 +122,7 @@ export class InscricoesService {
 
     if (!perfilParticipante) {
       throw new ForbiddenException(
-        'Perfil de participante não encontrado para o usuário atual.',
+        'Perfil de participante nao encontrado para o usuario atual.',
       );
     }
 
@@ -70,7 +135,7 @@ export class InscricoesService {
       });
 
       if (!cupom) {
-        throw new NotFoundException('Cupom inválido ou não encontrado.');
+        throw new NotFoundException('Cupom invalido ou nao encontrado.');
       }
       if (cupom.quantidade_uso >= cupom.limite_usos) {
         throw new BadRequestException(
@@ -121,7 +186,7 @@ export class InscricoesService {
 
     if (!pagamento) {
       throw new NotFoundException(
-        'Transação não encontrada pelo gateway_id fornecido.',
+        'Transacao nao encontrada pelo gateway_id fornecido.',
       );
     }
 
@@ -131,7 +196,7 @@ export class InscricoesService {
       return this.prisma.$transaction(async (tx) => {
         const pagAtualizado = await tx.pagamento.update({
           where: { id_pagamento: pagamento.id_pagamento },
-          data: { status: 'Aprovado' },
+          data: { status: 'Aprovado', data_pagamento: new Date() },
         });
 
         const inscricaoAtualizada = await tx.inscricaoEdicao.update({
@@ -146,9 +211,54 @@ export class InscricoesService {
       });
     }
 
-    return this.prisma.pagamento.update({
-      where: { id_pagamento: pagamento.id_pagamento },
-      data: { status: dto.status },
+    const novoStatusInscricao =
+      dto.status === 'Cancelado'
+        ? 'Cancelada'
+        : dto.status === 'Estornado'
+        ? 'Estornada'
+        : 'Pendente';
+
+    return this.prisma.$transaction(async (tx) => {
+      const pagAtualizado = await tx.pagamento.update({
+        where: { id_pagamento: pagamento.id_pagamento },
+        data: { status: dto.status },
+      });
+
+      const inscricaoAtualizada = await tx.inscricaoEdicao.update({
+        where: { id_inscricao_edicao: pagamento.id_inscricao_edicao },
+        data: { status: novoStatusInscricao },
+      });
+
+      return { pagamento: pagAtualizado, inscricao: inscricaoAtualizada };
     });
+  }
+
+  async validarQrCode(urlQrcode: string) {
+    const inscricao = await this.prisma.inscricaoEdicao.findFirst({
+      where: { url_qrcode: urlQrcode },
+      include: {
+        participante: {
+          include: {
+            usuario: true,
+          },
+        },
+        lote: true,
+      },
+    });
+
+    if (!inscricao) {
+      throw new NotFoundException('Inscricao invalida ou QR Code nao encontrado.');
+    }
+
+    if (inscricao.status !== 'Confirmada') {
+      throw new BadRequestException(
+        `Inscricao nao esta confirmada. Status atual: ${inscricao.status}`,
+      );
+    }
+
+    return {
+      valido: true,
+      inscricao,
+    };
   }
 }

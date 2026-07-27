@@ -1,13 +1,19 @@
 import {
   Body,
   Controller,
+  Get,
   Headers,
+  Param,
+  ParseIntPipe,
   Post,
   Req,
   UnauthorizedException,
 } from '@nestjs/common';
 import { InscricoesService } from './inscricoes.service';
 import { CriarInscricaoDto } from './dto/criar-inscricao.dto';
+import { CriarLoteDto } from './dto/criar-lote.dto';
+import { CriarCupomDto } from './dto/criar-cupom.dto';
+import { ValidarQrCodeDto } from './dto/validar-qrcode.dto';
 
 interface RequestWithUser {
   user?: {
@@ -31,10 +37,39 @@ export class InscricoesController {
 
     if (!usuarioId || Number.isNaN(usuarioId)) {
       throw new UnauthorizedException(
-        'Identificador de usuário não fornecido no contexto de autenticação.',
+        'Identificador de usuario nao fornecido no contexto de autenticacao.',
       );
     }
 
     return this.inscricoesService.criarInscricao(usuarioId, dto);
+  }
+
+  @Post('lotes')
+  async criarLote(@Body() dto: CriarLoteDto) {
+    return this.inscricoesService.criarLote(dto);
+  }
+
+  @Get('lotes/edicao/:id_edicao')
+  async listarLotesPorEdicao(
+    @Param('id_edicao', ParseIntPipe) idEdicao: number,
+  ) {
+    return this.inscricoesService.listarLotesPorEdicao(idEdicao);
+  }
+
+  @Post('cupons')
+  async criarCupom(@Body() dto: CriarCupomDto) {
+    return this.inscricoesService.criarCupom(dto);
+  }
+
+  @Get('cupons/edicao/:id_edicao')
+  async listarCuponsPorEdicao(
+    @Param('id_edicao', ParseIntPipe) idEdicao: number,
+  ) {
+    return this.inscricoesService.listarCuponsPorEdicao(idEdicao);
+  }
+
+  @Post('validar-qrcode')
+  async validarQrCode(@Body() dto: ValidarQrCodeDto) {
+    return this.inscricoesService.validarQrCode(dto.url_qrcode);
   }
 }

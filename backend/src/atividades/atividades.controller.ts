@@ -1,7 +1,10 @@
 import {
   Body,
   Controller,
+  Get,
   Headers,
+  Param,
+  ParseIntPipe,
   Post,
   Req,
   UnauthorizedException,
@@ -9,6 +12,8 @@ import {
 import { AtividadesService } from './atividades.service';
 import { InscreverAtividadeDto } from './dto/inscrever-atividade.dto';
 import { RegistrarPresencaItemDto } from './dto/registrar-presenca.dto';
+import { CriarAtividadeDto } from './dto/criar-atividade.dto';
+import { AssociarMinistranteDto } from './dto/associar-ministrante.dto';
 
 interface RequestWithUser {
   user?: {
@@ -21,6 +26,23 @@ interface RequestWithUser {
 export class AtividadesController {
   constructor(private readonly atividadesService: AtividadesService) {}
 
+  @Post()
+  async criarAtividade(@Body() dto: CriarAtividadeDto) {
+    return this.atividadesService.criarAtividade(dto);
+  }
+
+  @Get('cronograma/edicao/:id_edicao')
+  async obterCronograma(
+    @Param('id_edicao', ParseIntPipe) idEdicao: number,
+  ) {
+    return this.atividadesService.obterCronogramaPorEdicao(idEdicao);
+  }
+
+  @Post('associar-ministrante')
+  async associarMinistrante(@Body() dto: AssociarMinistranteDto) {
+    return this.atividadesService.associarMinistrante(dto);
+  }
+
   @Post('inscrever')
   async inscrever(
     @Body() dto: InscreverAtividadeDto,
@@ -32,7 +54,7 @@ export class AtividadesController {
 
     if (!usuarioId || Number.isNaN(usuarioId)) {
       throw new UnauthorizedException(
-        'Identificador de usuário não fornecido no contexto de autenticação.',
+        'Identificador de usuario nao fornecido no contexto de autenticacao.',
       );
     }
 
@@ -40,7 +62,14 @@ export class AtividadesController {
   }
 
   @Post('chamada')
-  async chamada(@Body() itens: RegistrarPresencaItemDto[]) {
-    return this.atividadesService.registrarChamada(itens);
+  async chamada(
+    @Body() itens: RegistrarPresencaItemDto[],
+    @Headers('x-usuario-id') usuarioIdHeader?: string,
+    @Req() req?: RequestWithUser,
+  ) {
+    const rawId = usuarioIdHeader || req?.user?.id_usuario || req?.user?.sub;
+    const usuarioId = rawId ? Number(rawId) : undefined;
+
+    return this.atividadesService.registrarChamada(itens, usuarioId);
   }
 }
