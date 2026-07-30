@@ -155,19 +155,21 @@ describe('InscricoesService', () => {
       expect(prisma.$transaction).toHaveBeenCalled();
     });
 
-    it('deve apenas atualizar pagamento se status diferente de Aprovado', async () => {
+    it('deve processar status nao-Aprovado via transaction atualizando pagamento e inscricao', async () => {
       prisma.pagamento.findFirst.mockResolvedValue({
         id_pagamento: 1,
         id_inscricao_edicao: 1,
       });
-      prisma.pagamento.update.mockResolvedValue({
-        id_pagamento: 1,
+
+      const result = await service.processarWebhook({
+        gateway_id: '123',
         status: 'Recusado',
       });
-
-      await service.processarWebhook({ gateway_id: '123', status: 'Recusado' });
-      expect(prisma.pagamento.update).toHaveBeenCalled();
-      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(prisma.$transaction).toHaveBeenCalled();
+      expect(result).toEqual({
+        pagamento: { id_pagamento: 1 },
+        inscricao: { id_inscricao_edicao: 1 },
+      });
     });
   });
 });

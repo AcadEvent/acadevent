@@ -20,6 +20,7 @@ interface MockPrismaService {
   inscricaoAtividade: {
     count: jest.Mock;
     create: jest.Mock;
+    findFirst: jest.Mock;
     findUnique: jest.Mock;
   };
   presenca: {
@@ -45,6 +46,7 @@ describe('AtividadesService', () => {
       inscricaoAtividade: {
         count: jest.fn(),
         create: jest.fn(),
+        findFirst: jest.fn(),
         findUnique: jest.fn(),
       },
       presenca: {
