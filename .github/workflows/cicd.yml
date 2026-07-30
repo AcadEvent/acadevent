@@ -1,0 +1,95 @@
+name: CI/CD Pipeline Central
+
+on:
+  pull_request:
+    branches: [develop]
+    types: [opened, synchronize, reopened, edited]
+  push:
+    branches: [develop]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  validar-pr:
+    name: 1. Validar Pull Request
+    uses: ./.github/workflows/_validar-pull-requests.yml
+
+  validar-docs:
+    name: 2. Validar Padrao de Documentacao
+    needs: [validar-pr]
+    uses: ./.github/workflows/_validar-docs.yml
+
+  testes-backend:
+    name: 3. Executar Testes do Backend
+    needs: [validar-docs]
+    uses: ./.github/workflows/_testes-backend.yml
+
+  testes-frontend:
+    name: 4. Executar Testes do Frontend
+    needs: [validar-docs]
+    uses: ./.github/workflows/_testes-frontend.yml
+
+  merge-backend:
+    name: 5. Automerge Develop -> Backend
+    needs: [testes-backend]
+    uses: ./.github/workflows/_merge-backend.yml
+
+  merge-frontend:
+    name: 6. Automerge Develop -> Frontend
+    needs: [testes-frontend]
+    uses: ./.github/workflows/_merge-frontend.yml
+
+  testes-pos-merge-backend:
+    name: 7. Testes Pos-Merge Backend
+    needs: [merge-backend]
+    uses: ./.github/workflows/_testes-backend.yml
+
+  testes-pos-merge-frontend:
+    name: 8. Testes Pos-Merge Frontend
+    needs: [merge-frontend]
+    uses: ./.github/workflows/_testes-frontend.yml
+
+  merge-main:
+    name: 9. Merge Automático (backend, frontend, docs) -> Main
+    needs: [testes-pos-merge-backend, testes-pos-merge-frontend]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do codigo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configurar Git Bot e Integrar Branches na Main
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git fetch origin main:origin/main || true
+          git fetch origin backend:origin/backend || true
+          git fetch origin frontend:origin/frontend || true
+          git fetch origin docs:origin/docs || true
+
+          git checkout main 2>/dev/null || git checkout -b main origin/main
+
+          echo "Realizando merge da branch 'backend' para 'main'..."
+          if git rev-parse origin/backend >/dev/null 2>&1; then
+            git merge origin/backend -m "chore(release): merge branch 'backend' into main [skip ci]" --no-ff || { echo "::error::Merge conflict ao mesclar backend em main. Resolva manualmente."; exit 1; }
+          fi
+
+          echo "Realizando merge da branch 'frontend' para 'main'..."
+          if git rev-parse origin/frontend >/dev/null 2>&1; then
+            git merge origin/frontend -m "chore(release): merge branch 'frontend' into main [skip ci]" --no-ff || { echo "::error::Merge conflict ao mesclar frontend em main. Resolva manualmente."; exit 1; }
+          fi
+
+          echo "Realizando merge da branch 'docs' para 'main'..."
+          if git rev-parse origin/docs >/dev/null 2>&1; then
+            git merge origin/docs -m "chore(release): merge branch 'docs' into main [skip ci]" --no-ff || { echo "::error::Merge conflict ao mesclar docs em main. Resolva manualmente."; exit 1; }
+          fi
+
+          echo "Push das atualizacoes para origin/main..."
+          git push origin main

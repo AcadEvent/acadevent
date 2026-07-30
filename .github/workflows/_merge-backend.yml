@@ -1,0 +1,64 @@
+name: Automerge Backend
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  merge-backend:
+    name: Automerge Develop para Backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do codigo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verificar se ha arquivos do Frontend
+        id: check_frontend
+        shell: bash
+        run: |
+          git fetch origin develop:origin/develop || true
+          git fetch origin backend:origin/backend || true
+
+          BASE_REF="origin/backend"
+          if ! git rev-parse "$BASE_REF" >/dev/null 2>&1; then
+            BASE_REF="origin/develop~1"
+          fi
+
+          echo "Verificando arquivos alterados em relacao a $BASE_REF..."
+          FRONTEND_FILES=$(git diff --name-only "$BASE_REF" origin/develop | grep '^frontend/' || true)
+
+          if [ -n "$FRONTEND_FILES" ]; then
+            echo "::notice::O PR/Commit contem arquivos do Frontend. Merge para 'backend' cancelado."
+            echo "has_frontend=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_frontend=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Executar Merge para Branch Backend
+        if: steps.check_frontend.outputs.has_frontend == 'false'
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git rev-parse origin/backend >/dev/null 2>&1; then
+            git checkout -B backend origin/backend
+          else
+            git checkout -b backend
+          fi
+          
+          if git merge origin/develop -m "chore(merge): automerge develop into backend [skip ci]" --no-ff; then
+            echo "Merge realizado com sucesso. Realizando push..."
+            git push origin backend
+          else
+            echo "::error::Falha ao realizar merge da develop para backend."
+            exit 1
+          fi
