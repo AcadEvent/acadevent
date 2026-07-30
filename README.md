@@ -41,12 +41,15 @@ Para os desenvolvedores do backend, a organização do diretório `backend/src/`
 ```text
 acadevent/                    # Pasta raiz do Monorepo
 ├── .postgres-data/           # Dados persistidos do banco PostgreSQL (Ignorado no Git)
+├── docs/                     # Documentação geral do projeto (padrões, governança)
 ├── backend/                  # Camada de Lógica de Negócio (NestJS)
+│   ├── docs/                 # Decisões de arquitetura e documentação do backend
 │   ├── prisma/               # Esquemas e migrações do banco de dados
 │   ├── src/                  # Código-fonte da API REST (TypeScript)
 │   ├── Dockerfile.dev        # Receita de container para o ambiente de desenvolvimento
 │   └── .env                  # Variáveis de ambiente locais do backend (Ignorado no Git)
 ├── frontend/                 # Camada de Apresentação (React + Next.js App Router)
+│   ├── docs/                 # Decisões de design e documentação do frontend
 │   ├── src/                  # Componentes e páginas da interface (TypeScript)
 │   └── Dockerfile.dev        # Receita de container para o ambiente de desenvolvimento
 ├── .gitignore                # Escudo global de arquivos ignorados no controle de versão
