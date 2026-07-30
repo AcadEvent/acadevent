@@ -1,0 +1,64 @@
+name: Automerge Frontend
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  merge-frontend:
+    name: Automerge Develop para Frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do codigo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verificar se ha arquivos do Backend
+        id: check_backend
+        shell: bash
+        run: |
+          git fetch origin develop:origin/develop || true
+          git fetch origin frontend:origin/frontend || true
+
+          BASE_REF="origin/frontend"
+          if ! git rev-parse "$BASE_REF" >/dev/null 2>&1; then
+            BASE_REF="origin/develop~1"
+          fi
+
+          echo "Verificando arquivos alterados em relacao a $BASE_REF..."
+          BACKEND_FILES=$(git diff --name-only "$BASE_REF" origin/develop | grep '^backend/' || true)
+
+          if [ -n "$BACKEND_FILES" ]; then
+            echo "::notice::O PR/Commit contem arquivos do Backend. Merge para 'frontend' cancelado."
+            echo "has_backend=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_backend=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Executar Merge para Branch Frontend
+        if: steps.check_backend.outputs.has_backend == 'false'
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git rev-parse origin/frontend >/dev/null 2>&1; then
+            git checkout -B frontend origin/frontend
+          else
+            git checkout -b frontend
+          fi
+
+          if git merge origin/develop -m "chore(merge): automerge develop into frontend [skip ci]" --no-ff; then
+            echo "Merge realizado com sucesso. Realizando push..."
+            git push origin frontend
+          else
+            echo "::error::Falha ao realizar merge da develop para frontend."
+            exit 1
+          fi

@@ -1,0 +1,71 @@
+name: Validar Pull Requests
+
+on:
+  workflow_call:
+  pull_request:
+    branches: [develop]
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: pr-validator-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pr-semantic-check:
+    name: Validar Titulo Semantico do PR
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Semantic Pull Request Check
+        uses: amannn/action-semantic-pull-request@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            perf
+            test
+            build
+            ci
+            chore
+            revert
+          requireScope: false
+
+  check-up-to-date:
+    name: Verificar se a branch esta atualizada com a develop
+    runs-on: ubuntu-latest
+    needs: [pr-semantic-check]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verificar integridade e sincronia com a develop
+        shell: bash
+        run: |
+          git fetch origin develop:origin/develop || true
+          BASE_SHA=$(git rev-parse origin/develop 2>/dev/null || git rev-parse develop 2>/dev/null || echo "")
+          HEAD_SHA="${{ github.event.pull_request.head.sha || github.sha }}"
+          
+          if [ -z "$BASE_SHA" ]; then
+            echo "Branch develop obtida para comparacao."
+            exit 0
+          fi
+          
+          MERGE_BASE=$(git merge-base "$HEAD_SHA" "$BASE_SHA" 2>/dev/null || echo "")
+          if [ "$MERGE_BASE" = "$BASE_SHA" ]; then
+            echo "Branch esta devidamente sincronizada/atualizada com a develop."
+          else
+            echo "::error::Branch nao esta sincronizada com a develop. Realize git rebase ou merge da develop antes de prosseguir."
+            exit 1
+          fi
