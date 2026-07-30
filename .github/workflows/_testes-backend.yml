@@ -18,12 +18,12 @@ jobs:
 
     steps:
       - name: Checkout do codigo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
-      - name: Setup Node.js (v22)
-        uses: actions/setup-node@v4
+      - name: Setup Node.js (v24)
+        uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
 
@@ -32,6 +32,8 @@ jobs:
 
       - name: Gerar Prisma Client
         run: npx prisma generate
+        env:
+          DATABASE_URL: "postgresql://acadevent_admin:acadevent_local_pwd@localhost:5432/acadevent_db?schema=public"
 
       - name: Executar suite de testes do Backend
         run: npm test

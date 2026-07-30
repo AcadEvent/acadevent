@@ -46,7 +46,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -56,12 +56,12 @@ jobs:
           git fetch origin develop:origin/develop || true
           BASE_SHA=$(git rev-parse origin/develop 2>/dev/null || git rev-parse develop 2>/dev/null || echo "")
           HEAD_SHA="${{ github.event.pull_request.head.sha || github.sha }}"
-          
+
           if [ -z "$BASE_SHA" ]; then
             echo "Branch develop obtida para comparacao."
             exit 0
           fi
-          
+
           MERGE_BASE=$(git merge-base "$HEAD_SHA" "$BASE_SHA" 2>/dev/null || echo "")
           if [ "$MERGE_BASE" = "$BASE_SHA" ]; then
             echo "Branch esta devidamente sincronizada/atualizada com a develop."

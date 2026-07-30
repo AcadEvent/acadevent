@@ -15,7 +15,7 @@ jobs:
 
     steps:
       - name: Checkout do codigo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -24,21 +24,35 @@ jobs:
         id: check_frontend
         shell: bash
         run: |
-          git fetch origin develop:origin/develop || true
-          git fetch origin backend:origin/backend || true
+          set -euo pipefail
 
-          BASE_REF="origin/backend"
-          if ! git rev-parse "$BASE_REF" >/dev/null 2>&1; then
-            BASE_REF="origin/develop~1"
+          git fetch --no-tags --quiet origin +refs/heads/develop:refs/remotes/origin/develop || true
+          git fetch --no-tags --quiet origin +refs/heads/main:refs/remotes/origin/main || true
+
+          # Define a base de comparacao usando o merge-base com a main ou develop
+          BASE_SHA=$(git merge-base origin/main origin/develop 2>/dev/null || git merge-base origin/develop HEAD 2>/dev/null || git rev-parse origin/develop~1)
+          echo "Base de comparacao: $BASE_SHA"
+
+          CHANGES=$(git diff --name-only "$BASE_SHA" origin/develop || true)
+
+          if [ -z "$CHANGES" ]; then
+            echo "✅ Nenhuma alteracao em relacao a base. Nada a validar."
+            echo "has_frontend=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
 
-          echo "Verificando arquivos alterados em relacao a $BASE_REF..."
-          FRONTEND_FILES=$(git diff --name-only "$BASE_REF" origin/develop | grep '^frontend/' || true)
+          echo "Arquivos alterados nesta promocao:"
+          echo "$CHANGES" | sed 's/^/  /'
 
-          if [ -n "$FRONTEND_FILES" ]; then
-            echo "::notice::O PR/Commit contem arquivos do Frontend. Merge para 'backend' cancelado."
+          FORBIDDEN=$(echo "$CHANGES" | grep -E "^frontend/" || true)
+
+          if [ -n "$FORBIDDEN" ]; then
+            echo "::notice::A branch 'backend' nao aceita alteracoes em 'frontend/'."
+            echo "Arquivos recusados:"
+            echo "$FORBIDDEN" | sed 's/^/  /'
             echo "has_frontend=true" >> "$GITHUB_OUTPUT"
           else
+            echo "✅ Validação de diretórios para backend concluída com sucesso (sem alterações em frontend/)."
             echo "has_frontend=false" >> "$GITHUB_OUTPUT"
           fi
 
@@ -54,7 +68,7 @@ jobs:
           else
             git checkout -b backend
           fi
-          
+
           if git merge origin/develop -m "chore(merge): automerge develop into backend [skip ci]" --no-ff; then
             echo "Merge realizado com sucesso. Realizando push..."
             git push origin backend
