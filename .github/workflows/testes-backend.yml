@@ -1,0 +1,39 @@
+name: Rodar Testes Backend
+
+on:
+  workflow_call:
+
+  pull_request:
+    branches: [dev]
+
+  push:
+    branches-ignore: [ main, dev ]
+
+jobs:
+  testes-backend:
+    name: Executar Testes do Backend
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout do codigo
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js (v24)
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Instalar dependencias do Backend
+        run: npm ci
+
+      - name: Gerar Prisma Client
+        run: npx prisma generate
+
+      - name: Executar suite de testes do Backend
+        run: npm test

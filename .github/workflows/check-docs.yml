@@ -1,0 +1,92 @@
+name: Validar Documentacao
+
+on:
+  workflow_call:
+
+  pull_request:
+    paths:
+      - '**/*.md'
+
+  push:
+    paths:
+      - '**/*.md'
+
+jobs:
+  validar-docs-header:
+    name: Validar Cabecalhos de Documentacao
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do codigo
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Validar padrao em arquivos .md alterados
+        shell: bash
+        run: |
+          git fetch origin develop:origin/develop || true
+          BASE_REF="origin/develop"
+          if ! git rev-parse "$BASE_REF" >/dev/null 2>&1; then
+            BASE_REF="HEAD~1"
+          fi
+
+          echo "Buscando arquivos .md alterados em relacao a $BASE_REF..."
+          CHANGED_FILES=$(git diff --name-only "$BASE_REF" HEAD | grep '\.md$' || true)
+
+          ERRORS=0
+
+          for FILE in $CHANGED_FILES; do
+            # Ignorar o README.md na raiz do projeto
+            if [ "$FILE" = "README.md" ]; then
+              echo "Ignorando README.md na raiz..."
+              continue
+            fi
+
+            if [ ! -f "$FILE" ]; then
+              continue
+            fi
+
+            echo "Analisando $FILE..."
+
+            HAS_VERSION=$(grep -i -E '^\s*(-\s*)?(Versão|Versao):' "$FILE" || true)
+            HAS_DATE=$(grep -i -E '^\s*(-\s*)?Data:' "$FILE" || true)
+            HAS_AUTHOR=$(grep -i -E '^\s*(-\s*)?(Autor|Autores):' "$FILE" || true)
+            HAS_REVIEWERS=$(grep -i -E '^\s*(-\s*)?Revisores:' "$FILE" || true)
+            HAS_SEPARATOR=$(grep -E '^\s*---$' "$FILE" || true)
+
+            FILE_ERRORS=0
+            if [ -z "$HAS_VERSION" ]; then
+              echo "::error file=$FILE::Campo 'Versão:' obrigatorio nao encontrado no cabecalho."
+              FILE_ERRORS=$((FILE_ERRORS + 1))
+            fi
+            if [ -z "$HAS_DATE" ]; then
+              echo "::error file=$FILE::Campo 'Data:' obrigatorio nao encontrado no cabecalho."
+              FILE_ERRORS=$((FILE_ERRORS + 1))
+            fi
+            if [ -z "$HAS_AUTHOR" ]; then
+              echo "::error file=$FILE::Campo 'Autor:' ou 'Autores:' obrigatorio nao encontrado no cabecalho."
+              FILE_ERRORS=$((FILE_ERRORS + 1))
+            fi
+            if [ -z "$HAS_REVIEWERS" ]; then
+              echo "::error file=$FILE::Campo 'Revisores:' obrigatorio nao encontrado no cabecalho."
+              FILE_ERRORS=$((FILE_ERRORS + 1))
+            fi
+            if [ -z "$HAS_SEPARATOR" ]; then
+              echo "::error file=$FILE::Separador '---' obrigatorio nao encontrado apos o cabecalho."
+              FILE_ERRORS=$((FILE_ERRORS + 1))
+            fi
+
+            if [ $FILE_ERRORS -gt 0 ]; then
+              ERRORS=$((ERRORS + 1))
+            else
+              echo "  [OK] Header valido em $FILE"
+            fi
+          done
+
+          if [ $ERRORS -gt 0 ]; then
+            echo "::error::$ERRORS arquivo(s) de documentacao violam o padrao definido em docs/padrao-de-documentacao.md"
+            exit 1
+          else
+            echo "Todos os arquivos de documentacao estao em conformidade com o padrao."
+          fi
