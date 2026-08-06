@@ -126,20 +126,20 @@ Com os containers ativos, abra o seu navegador e certifique-se de que os seguint
 
 ---
 
-## ⚖️ Diretrizes de Governança e Git Flow (Obrigatório)
+## ⚖️ Diretrizes de Governança e Fluxo de Branches (Obrigatório)
 
-Para manter o histórico de commits legível e auditável para as entregas dos marcos acadêmicos, todas as squads devem seguir estas regras de ouro:
+Para manter o histórico de commits legível, auditável e garantir a segurança do ambiente de produção, todas as squads devem seguir as diretrizes estabelecidas no documento [Guia de Governança Git e Fluxo de Branches](docs/fluxo-de-branches.md):
 
-1. **Nunca commite diretamente na `main` ou na `develop`:** Toda nova tarefa deve ser criada a partir de uma feature branch isolada.
-* Para iniciar uma tarefa: `git flow feature start nome-da-tarefa`
+1. **Estrutura de Branches:**
+   * **`main` (Read-Only):** Branch de produção estritamente em modo de leitura. Não aceita commits nem PRs diretos. Sua atualização é realizada automaticamente a partir da branch `dev` via GitHub Actions (`auto-merge.yml`).
+   * **`dev`:** Branch principal de integração e desenvolvimento. Todas as branches de trabalho (`feature/*`, `fix/*`, `docs/*`, etc.) devem ser **obrigatoriamente criadas a partir da branch `dev`**.
 
+2. **Mensagens de Commit Padronizadas (Conventional Commits):** Cada commit e título de Pull Request deve possuir um tipo legível e semântico:
+   * `feat(...)`: Nova funcionalidade ou requisito funcional completo.
+   * `fix(...)`: Correção de bug ou comportamento inesperado.
+   * `docs(...)`: Alterações estritas em documentações ou arquivos MD.
+   * `chore(...)`: Mudanças em configurações, ferramentas, Docker ou pacotes de dependências.
+   * *Exemplo de commit válido:* `feat(cadastro): adiciona validacao de CPF no formulario`
 
-2. **Mensagens de Commit Padronizadas (Conventional Commits):** Cada commit deve possuir um tipo legível:
-* `feat(...)`: Nova funcionalidade ou requisito funcional completo.
-* `fix(...)`: Correção de bug ou comportamento inesperado.
-* `docs(...)`: Alterações estritas em documentações ou arquivos MD.
-* `chore(...)`: Mudanças em configurações, ferramentas, Docker ou pacotes de dependências.
-* *Exemplo de commit válido:* `feat(cadastro): adiciona validacao de CPF no formulario`
+3. **Integração via Pull Request (PR):** Quando a tarefa for concluída na branch de trabalho, publique-a no remoto (`git push -u origin feature/sua-tarefa`) e abra um Pull Request direcionado para a branch `dev`. Para mais detalhes, consulte o [docs/fluxo-de-branches.md](docs/fluxo-de-branches.md).
 
-
-3. **Fechamento via Pull Request (PR):** Quando sua funcionalidade estiver concluída, publique-a no remoto via `git flow feature publish nome-da-tarefa` e abra um Pull Request direcionado para a branch `develop` no GitHub. **Nunca** execute o comando `git flow feature finish` localmente antes de o PR ser revisado e aprovado pela gerência de projeto (`SPR` / `SPM`).
