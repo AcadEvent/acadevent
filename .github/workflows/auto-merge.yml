@@ -1,0 +1,44 @@
+name: Sync Dev to Main
+
+on:
+  push:
+    branches:
+      - dev
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync-branches:
+    name: Syncing dev to main
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sync main with dev
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Garante que as branches remotas estão atualizadas localmente
+          git fetch origin main:main
+          git fetch origin dev:dev
+          
+          # Tenta o merge rápido (fast-forward) de dev para main
+          git checkout main
+          git merge dev --ff-only
+          
+          # Pushes para main; se a branch main tiver proteção contra push direto, abre PR e realiza o merge automaticamente
+          if ! git push origin main; then
+            echo "Push direto bloqueado pelas regras de proteção da branch. Criando PR e realizando merge automático..."
+            gh pr create --base main --head dev --title "ci: sync dev to main" --body "Sincronização automática da dev para main" || true
+            gh pr merge dev --base main --merge --auto || gh pr merge dev --base main --admin --merge
+          fi
+

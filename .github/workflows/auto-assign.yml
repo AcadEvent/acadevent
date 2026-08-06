@@ -1,0 +1,22 @@
+name: 'Auto Assign'
+
+on:
+  pull_request:
+    branches-ignore: main
+    types: [opened, ready_for_review, reopened]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  add-reviews:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: necojackarc/auto-request-review@v0.13.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config: '.github/auto_request_review.yml'

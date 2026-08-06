@@ -1,0 +1,38 @@
+# Configuration for necojackarc/auto-request-review GitHub Action
+
+# Reviewer groups by team
+groups:
+  SPM:
+    - grejc
+    - Erwin5642
+  SBE:
+    - sizenando-f
+    - fvilhalva
+    - SlecheGIT
+    - AnaCDL
+  SDE:
+    - kkaiochristaldo
+    - JoseGabrielRCB
+    - Thiago-comp
+  SFE:
+    - Frostbite16
+    - MuraBr
+    - igormichalski
+  SPR:
+    - henriquegoliveira
+    - Gabriel05Azevedo
+    - Lua-muniz
+    - Nann-spec
+
+# Files pattern to trigger reviewer group assignment
+files:
+  '**':
+    - SPM
+    - SBE
+    - SDE
+    - SFE
+    - SPR
+
+# Action options
+options:
+  ignore_draft: true
