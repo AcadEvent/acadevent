@@ -1,36 +1,39 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AcadEvent — Frontend
 
-## Getting Started
+Camada de apresentação do AcadEvent: **Next.js 16 (App Router) + React 19 +
+TypeScript + Material UI (MUI)**. Consome a API REST do backend NestJS (não acessa
+banco). Roda na porta **3001**.
 
-First, run the development server:
+## Rodar
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev      # http://localhost:3001
+npm run build    # build de produção (type-check incluso)
+npm run lint
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Variáveis de ambiente: `NEXT_PUBLIC_API_URL` (padrão `http://localhost:3000`).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Onde está a minha página?
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+A estrutura de pastas em `src/app` espelha a URL, agrupada por área de acesso
+(`(public)`, `(auth)`, `(painel)`, `(gerenciar)`, `(admin)`). Cada rota já existe
+como `page.tsx` com um **brief** no topo (o que fazer, componentes, dados, DoD).
+Abra o arquivo da sua rota e substitua o `<PagePlaceholder />` pelo conteúdo real.
 
-## Learn More
+Veja quem é dono do quê em [`docs/atribuicoes.md`](./docs/atribuicoes.md).
 
-To learn more about Next.js, take a look at the following resources:
+## Documentação
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- [`docs/arquitetura-frontend.md`](./docs/arquitetura-frontend.md) — como o projeto é organizado.
+- [`docs/decisoes-de-design.md`](./docs/decisoes-de-design.md) — stack e **convenções de implementação (MUI)**.
+- [`docs/mapa-de-paginas.md`](./docs/mapa-de-paginas.md) — todas as rotas × requisitos.
+- [`docs/atribuicoes.md`](./docs/atribuicoes.md) — divisão de trabalho e template de brief.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Regras rápidas
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Estilo **só** via tema MUI + `sx` (sem Tailwind, sem cor hardcoded).
+- Dados **sempre** via `@/lib/api` (nunca `fetch` direto).
+- Links via `href` (o `next/link` está integrado ao tema).
+- Páginas `/` (landing) e `/eventos` são os **exemplos de referência**.
