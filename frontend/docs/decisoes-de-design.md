@@ -1,9 +1,9 @@
 # Decisões de Design — Frontend AcadEvent
 
-Versão: 0.2  
-Data: 2026-06-09 (rev. 2026-06-18)  
-Autor: João Vitor Antunes da Silva (SPM)  
-Revisores: - 
+Versão: 0.4
+Data: 2026-08-12
+Autor: João Vitor Antunes da Silva (SPM), Guilherme Zanan Piveta (SFE)
+Revisores: —
 
 ---
 
@@ -13,11 +13,18 @@ Padrão de autoria e revisão: [docs/padrao-de-documentacao.md](../../docs/padra
 
 ---
 
+> **Atualização v0.4 (2026-08-12):** o esqueleto do frontend foi implementado
+> (ver [arquitetura-frontend.md](./arquitetura-frontend.md)). Esta versão fecha as
+> decisões abaixo e adiciona as **Convenções de implementação (MUI)** (§7).
+> Decisões fechadas: MUI **decidido** (não mais proposta); **Tailwind removido**
+> (MUI-only); fonte **Geist** mantida; **modo escuro adiado**; cor `primary` como
+> **placeholder** até o logo; navegação via `next/link` (`LinkBehavior` no tema).
+
 ## Decisão de stack UI: Material UI (MUI)
 
-**Status:** Proposta - pendente de aprovação do time.  
+**Status:** Decidido e implementado (v0.4).  
 **Autor** Guilherme Zanan Piveta (SFE)
-**Data:** 2026-06-18.
+**Data:** 2026-06-18 (implementado em 2026-08-12).
 
 Adotar [Material UI (MUI)](https://mui.com/material-ui/) como biblioteca de componentes e sistema de tema do frontend. Pacotes: `@mui/material`, `@emotion/react`, `@emotion/styled`, `@mui/icons-material` e `@mui/x-date-pickers`.
 
@@ -73,11 +80,11 @@ Adotar [Material UI (MUI)](https://mui.com/material-ui/) como biblioteca de comp
 
 ### 2.1 Cores
 
-Tokens mapeados para a paleta do tema MUI. Os valores derivam do tema; a cor de marca ainda precisa ser definida (MUI calcula as variações automaticamente).
+Tokens mapeados para a paleta do tema MUI. Os valores derivam do tema; a cor de marca ainda não está fechada, mas será extraída das cores do ícone/logo (MUI calcula as variações automaticamente a partir dela).
 
 | Token | Mapeamento MUI | Uso | Status |
 | --- | --- | --- | --- |
-| `primary` | `palette.primary.main` | Ações principais, links de destaque | Valor de marca pendente |
+| `primary` | `palette.primary.main` | Ações principais, links de destaque | Pendente — derivada das cores do ícone |
 | `primary-hover` | `palette.primary.dark` / overlay de hover | Hover em botões e links primários | Decidido (MUI) |
 | `background` | `palette.background.default` | Fundo da aplicação | Decidido (MUI) |
 | `foreground` | `palette.text.primary` | Texto principal | Decidido (MUI) |
@@ -89,7 +96,7 @@ Tokens mapeados para a paleta do tema MUI. Os valores derivam do tema; a cor de 
 
 **Perguntas em aberto**
 
-- [ ] Cor primária da marca? (MUI deriva hover/active/contraste a partir dela.)
+- [ ] Cor primária da marca: valor exato a definir a partir das cores do ícone/logo (MUI deriva hover/active/contraste a partir dela).
 - [ ] Contraste mínimo: WCAG AA? (MUI calcula `contrastText`; padrão já mira AA, mas o alvo é decisão do time.)
 - [ ] Modo escuro na Fase 1 ou fase posterior? (MUI suporta via `palette.mode`; decidir _quando_.)
 
@@ -97,26 +104,26 @@ Tokens mapeados para a paleta do tema MUI. Os valores derivam do tema; a cor de 
 
 | Papel | Família | Tamanho / peso | Status |
 | --- | --- | --- | --- |
-| Display / H1 | _A definir_ | _A definir_ | Pendente |
-| Heading / H2–H3 | _A definir_ | _A definir_ | Pendente |
-| Body | _A definir_ | _A definir_ | Pendente |
-| Caption / legenda | _A definir_ | _A definir_ | Pendente |
+| Display / H1 | Herda do tema | Padrão MUI (variante `h1`) | Decidido (padrão MUI) |
+| Heading / H2–H3 | Herda do tema | Padrão MUI (variantes `h2`/`h3`) | Decidido (padrão MUI) |
+| Body | Herda do tema | Padrão MUI (variante `body1`) | Decidido (padrão MUI) |
+| Caption / legenda | Herda do tema | Padrão MUI (variante `caption`) | Decidido (padrão MUI) |
 
 **Perguntas em aberto**
 
-- [ ] Manter Geist (já configurada no layout) ou trocar?
-- [ ] Escala tipográfica fixa ou fluida?
+- [ ] Manter Geist (já configurada no layout) ou usar Roboto (padrão MUI)? (só a família fica em aberto; a escala segue o padrão MUI)
+- [x] Escala tipográfica: padrão MUI (fixa, em `rem`); fluida só se houver necessidade.
 
 ### 2.3 Espaçamento, grid e forma
 
 | Aspecto | Decisão | Status |
 | --- | --- | --- |
-| Escala de espaçamento | _A definir_ (ex.: 4, 8, 12, 16, 24, 32) | Pendente |
-| Largura máxima de conteúdo | _A definir_ | Pendente |
-| Breakpoints | Tailwind padrão / customizado | Pendente |
-| Border radius | _A definir_ | Pendente |
-| Sombras | _A definir_ | Pendente |
-| Densidade visual | Compacta / arejada | Pendente |
+| Escala de espaçamento | Padrão MUI (`theme.spacing`, base 8px) | Decidido (padrão MUI) |
+| Largura máxima de conteúdo | Padrão MUI (`Container`, `maxWidth`) | Decidido (padrão MUI) |
+| Breakpoints | Padrão MUI (`xs`/`sm`/`md`/`lg`/`xl`) | Decidido (padrão MUI) |
+| Border radius | Padrão MUI (`shape.borderRadius`, 4px) | Decidido (padrão MUI) |
+| Sombras | Padrão MUI (`theme.shadows`) | Decidido (padrão MUI) |
+| Densidade visual | Padrão MUI (densidade padrão dos componentes) | Decidido (padrão MUI) |
 
 ---
 
@@ -151,24 +158,24 @@ Tokens mapeados para a paleta do tema MUI. Os valores derivam do tema; a cor de 
 
 ### 4.1 Fase 1 — Base
 
-| Componente | Variantes / estados | Usado em | Status |
-| --- | --- | --- | --- |
-| `Button` | _A definir_ | — | Pendente |
-| `Input` | _A definir_ | — | Pendente |
-| `Textarea` | _A definir_ | — | Pendente |
-| `Select` | _A definir_ | — | Pendente |
-| `Checkbox` | _A definir_ | — | Pendente |
-| `Radio` | _A definir_ | — | Pendente |
-| `Switch` | _A definir_ | — | Pendente |
-| `Card` | _A definir_ | — | Pendente |
-| `Badge` | _A definir_ | — | Pendente |
-| `Alert` | _A definir_ | — | Pendente |
-| `Toast` | _A definir_ | — | Pendente |
-| `Spinner` | _A definir_ | — | Pendente |
-| `Skeleton` | _A definir_ | — | Pendente |
-| `Container` | _A definir_ | — | Pendente |
-| `Section` | _A definir_ | — | Pendente |
-| `PageHeader` | _A definir_ | — | Pendente |
+| Componente | Componente MUI | Status |
+| --- | --- | --- |
+| `Button` | `Button` | Padrão MUI |
+| `Input` | `TextField` | Padrão MUI |
+| `Textarea` | `TextField` (`multiline`) | Padrão MUI |
+| `Select` | `Select` / `TextField` (`select`) | Padrão MUI |
+| `Checkbox` | `Checkbox` | Padrão MUI |
+| `Radio` | `Radio` / `RadioGroup` | Padrão MUI |
+| `Switch` | `Switch` | Padrão MUI |
+| `Card` | `Card` | Padrão MUI |
+| `Badge` | `Chip` (status) / `Badge` (contador) | Padrão MUI — ver notas de mapeamento |
+| `Alert` | `Alert` | Padrão MUI |
+| `Toast` | `Snackbar` + `Alert` | Padrão MUI |
+| `Spinner` | `CircularProgress` | Padrão MUI |
+| `Skeleton` | `Skeleton` | Padrão MUI |
+| `Container` | `Container` | Padrão MUI |
+| `Section` | Compor com `Box`/`Stack` | Sem componente próprio — compor |
+| `PageHeader` | Compor com `Box`/`Stack`/`Typography` | Sem componente próprio — compor |
 
 **Estados obrigatórios (Fase 1)**
 
@@ -182,29 +189,31 @@ Tokens mapeados para a paleta do tema MUI. Os valores derivam do tema; a cor de 
 
 | Tipo | Padrão escolhido | Status |
 | --- | --- | --- |
-| Sucesso | _A definir_ (toast / alert / inline) | Pendente |
-| Erro | _A definir_ | Pendente |
-| Validação de formulário | _A definir_ | Pendente |
+| Sucesso | `Snackbar` + `Alert` | Padrão MUI |
+| Erro | `Alert` / `Snackbar` | Padrão MUI |
+| Validação de formulário | `TextField` (`error` + `helperText`) | Padrão MUI (lógica com react-hook-form + zod) |
 
 ### 4.2 Fase 2 — Navegação e interação
 
-| Componente | Status |
-| --- | --- |
-| `Dialog` / `Modal` | Planejado |
-| `Popover` | Planejado |
-| `DropdownMenu` | Planejado |
-| `Tabs` | Planejado |
+| Componente | Componente MUI | Status |
+| --- | --- | --- |
+| `Dialog` / `Modal` | `Dialog` | Padrão MUI (Fase 2) |
+| `Popover` | `Popover` | Padrão MUI (Fase 2) |
+| `DropdownMenu` | `Menu` | Padrão MUI (Fase 2) |
+| `Tabs` | `Tabs` | Padrão MUI (Fase 2) |
 
 ### 4.3 Fase 3 — Domínio (eventos)
 
-| Componente | Status |
-| --- | --- |
-| `EventCard` | Planejado |
-| `EventListItem` | Planejado |
-| `EventFilters` | Planejado |
-| `DateRangeFilter` | Planejado |
-| `EnrollmentStatusBadge` | Planejado |
-| `EmptyState` | Planejado |
+Componentes de domínio: **não há equivalente padrão no MUI** — construir localmente, compondo primitivos MUI.
+
+| Componente | Base MUI (composição) | Status |
+| --- | --- | --- |
+| `EventCard` | `Card` + `Typography` + `Chip` | Planejado (custom) |
+| `EventListItem` | `ListItem` / `Card` | Planejado (custom) |
+| `EventFilters` | `TextField` + `Select` + `Chip` | Planejado (custom) |
+| `DateRangeFilter` | `@mui/x-date-pickers` (`DateRangePicker`) | Planejado (custom) |
+| `EnrollmentStatusBadge` | `Chip` | Planejado (custom) |
+| `EmptyState` | `Box`/`Stack` + `Typography` | Planejado (custom) |
 
 ---
 
@@ -237,6 +246,47 @@ Tokens mapeados para a paleta do tema MUI. Os valores derivam do tema; a cor de 
 | Onde documentar componentes no código | _A definir_ (ex.: Storybook, `components/ui/`) | Pendente |
 
 ---
+
+## 7. Convenções de implementação (MUI)
+
+Regras para manter o código coeso entre a equipe (e agentes de IA). Detalhes de
+arquitetura em [arquitetura-frontend.md](./arquitetura-frontend.md).
+
+**Estilo**
+
+- Estilizar **só** via tema MUI + prop `sx` (ou `styled`). **Sem Tailwind.**
+- **Nunca** usar cor hex hardcoded: usar `theme.palette.*` (ex.: `color: "text.secondary"`,
+  `bgcolor: "primary.main"`). Espaçamento sempre por `theme.spacing` (números no `sx`).
+- No MUI v9 o `Stack` só tipa `direction`, `spacing`, `divider`, `useFlexGap`, `sx`.
+  Passar `alignItems`/`justifyContent`/`flexWrap` **dentro do `sx`** (no `Box`/`Grid`
+  esses props funcionam direto).
+- Largura de conteúdo com `Container maxWidth`: público/landing `lg`; formulários de
+  auth `xs`; páginas de conteúdo em painel/gestão `md`–`lg`.
+
+**Componentes**
+
+- Reutilizar os compartilhados: layout (`Header`, `Footer`, `Sidebar`,
+  `DashboardShell`, `PageHeader`, `Section`), ui (`PagePlaceholder`, `EmptyState`) e
+  domínio (`EventCard`). Criar novos componentes de domínio em `components/domain`.
+- Ícones de `@mui/icons-material`; status via `Chip` (o `Badge` é contador);
+  feedback via `Snackbar`+`Alert`; datas via `@mui/x-date-pickers`.
+
+**Navegação e dados**
+
+- Links: usar `href="…"` em `Button`/`Link`/`ListItemButton`/`CardActionArea` — o
+  `LinkBehavior` (registrado no tema) integra o `next/link`. Não passar
+  `component={NextLink}` a partir de Server Components.
+- Dados sempre via `@/lib/api` (nunca `fetch` direto nem `@/lib/mock`).
+
+**Formulários**
+
+- `react-hook-form` + `zod` (`@hookform/resolvers`) para estado/validação; campos MUI
+  com `error` + `helperText`.
+
+**Brief por página**
+
+- Todo `page.tsx` começa com o bloco de brief (template em
+  [atribuicoes.md](./atribuicoes.md) §4) e respeita o *Definition of Done* de lá.
 
 ## Referências
 
