@@ -1,8 +1,8 @@
 # Mapa de Páginas — Frontend AcadEvent
 
-Versão: 0.1  
-Data: 2026-06-20  
-Autor: Guilherme Zanan Piveta (SFE)  
+Versão: 0.2
+Data: 2026-08-12
+Autor: Guilherme Zanan Piveta (SFE)
 Revisores: Kauan Henrick (SFE), Arthur Kenji Murakami (SFE), Igor Roberto Michalski de Souza (SFE)
 
 ---
@@ -202,13 +202,16 @@ Hub pessoal multi-evento; conteúdo por evento é escopado em `/painel/eventos/[
 
 ---
 
-## 11. Perguntas em aberto
+## 11. Decisões (resolvidas na v0.2)
 
-- [ ] Painel do ministrante/patrocinador: sub-rotas de `/painel` ou áreas próprias?
-- [ ] Gestão do evento: SPA densa com tabs ou rotas separadas por seção (como mapeado acima)?
-- [ ] Inscrição: fluxo multi-passo em rota única (wizard) ou rotas por passo? (impacta RNF04.4)
-- [ ] PWA/mobile (RNF04.2): mesmas rotas responsivas ou shell dedicado?
-- [ ] Identificador do evento na URL: `slug` legível vs. `id`.
+Fechadas ao implementar o esqueleto (ver [arquitetura-frontend.md](./arquitetura-frontend.md)):
+
+- [x] Painel do ministrante/patrocinador: **sub-rotas de `/painel`** (route group `(painel)`).
+- [x] Gestão do evento: **rotas separadas por seção** sob `(gerenciar)/gerenciar/[slug]`
+  (como mapeado), não SPA com tabs.
+- [x] Inscrição: **rota única** (`/eventos/[slug]/inscricao`) com wizard/Stepper (RNF04.4).
+- [x] PWA/mobile (RNF04.2): **mesmas rotas responsivas** + `manifest.ts`; sem shell dedicado.
+- [x] Identificador do evento na URL: **`slug`** legível.
 
 ---
 

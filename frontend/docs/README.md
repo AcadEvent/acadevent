@@ -1,8 +1,8 @@
 # Documentação do Frontend — AcadEvent
 
-Versão: 0.1  
-Data: 2026-06-09  
-Autor: João Vitor Antunes da Silva (SPM)  
+Versão: 0.2
+Data: 2026-08-12
+Autor: João Vitor Antunes da Silva (SPM), Guilherme Zanan Piveta (SFE)
 Revisores: —
 
 ---
@@ -15,13 +15,15 @@ A formatação destes documentos segue o [padrão de documentação do projeto](
 
 | Documento | Conteúdo |
 | --- | --- |
-| [decisoes-de-design.md](./decisoes-de-design.md) | Decisões centrais: stack, identidade visual, páginas, componentes e acessibilidade |
+| [arquitetura-frontend.md](./arquitetura-frontend.md) | Base implementada: estrutura de pastas, route groups, camada de dados, RBAC, PWA, tema |
+| [decisoes-de-design.md](./decisoes-de-design.md) | Decisões centrais: stack, identidade visual, componentes e convenções de implementação (MUI) |
 | [mapa-de-paginas.md](./mapa-de-paginas.md) | Inventário de rotas/páginas do frontend, mapeadas aos requisitos (RF) |
+| [atribuicoes.md](./atribuicoes.md) | Divisão de trabalho por área, template de brief e acompanhamento das rotas |
 
 ## Status
 
 | Fase | Escopo | Status |
 | --- | --- | --- |
-| Fase 1 | Identidade visual, páginas prioritárias, biblioteca base | Em definição |
+| Fase 1 | Identidade visual, páginas prioritárias, biblioteca base | Base implementada (esqueleto + landing); páginas em construção |
 | Fase 2 | Navegação e interações avançadas | Planejada |
-| Fase 3 | Componentes de domínio (eventos) | Planejada |
+| Fase 3 | Componentes de domínio (eventos) | Iniciada (`EventCard`, `EmptyState`) |
