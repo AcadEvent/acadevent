@@ -13,7 +13,7 @@ services:
       - .postgres-data:/var/lib/postgresql/data
     networks:
       - acadevent_network
-  
+
   # Camada de Lógica (Backend NestJS) - RNF07.1
   backend:
     build:
@@ -22,7 +22,7 @@ services:
     container_name: acadevent_backend
     volumes:
       - ./backend:/usr/src/app
-      - /usr/src/app/node_modules # Pra impedir que o node_modules local sobrescreva do container
+      - /usr/src/app/node_modules
     ports:
       - "3000:3000"
     environment:
@@ -31,7 +31,7 @@ services:
       - postgres
     networks:
       - acadevent_network
-  
+
   # Camada de Apresentação (Frontend Next.js) - RNF07.1
   frontend:
     build:
@@ -44,13 +44,12 @@ services:
     ports:
       - "3001:3001"
     environment:
-      HOSTNAME: 0.0.0.0 # Pra aceitar conexões fora do container
-      PORT: 3001        # Força o Next.js a rodar na porta 3001 interna
+      HOSTNAME: 0.0.0.0
+      PORT: 3001
+      NEXT_PUBLIC_API_URL: http://localhost:3000
     networks:
       - acadevent_network
-  
-# Criação de uma rede isolada do tipo bridge pra comunicação interna segura dos containers
+
 networks:
   acadevent_network:
     driver: bridge
-    

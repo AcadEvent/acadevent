@@ -1,28 +1,31 @@
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /usr/src/app
 
+# package.json postinstall runs `prisma generate` — schema must exist first
 COPY package*.json ./
+COPY prisma ./prisma
+COPY prisma.config.ts ./
+
 RUN npm install
 
 COPY . .
 RUN npm run build
 
-FROM node:20-alpine
+FROM node:22-alpine
 
 WORKDIR /usr/src/app
 
 ENV NODE_ENV=production
 
 COPY package*.json ./
+COPY prisma ./prisma
+COPY prisma.config.ts ./
+
 RUN npm install --omit=dev && npm cache clean --force
 
 COPY --from=builder /usr/src/app/dist ./dist
-COPY --from=builder /usr/src/app/prisma ./prisma
-COPY --from=builder /usr/src/app/prisma.config.ts ./prisma.config.ts
-
-RUN npx prisma generate
 
 EXPOSE 3000
 
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/src/main.js"]
