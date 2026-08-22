@@ -29,3 +29,33 @@ export function getAtividades(_eventoSlug: string): Promise<Atividade[]> {
 export function getMinistrantes(_eventoSlug: string): Promise<Ministrante[]> {
   return fake(mockMinistrantes);
 }
+
+export function postEvento(
+  input: Omit<Evento, "slug" | "status" | "inscricao">,
+): Promise<Evento> {
+  const baseSlug = [input.sigla || input.nome, input.edicao]
+    .filter(Boolean)
+    .join("-")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  let slug = baseSlug || "evento";
+  let sufixo = 2;
+
+  while (mockEventos.some((evento) => evento.slug === slug)) {
+    slug = `${baseSlug || "evento"}-${sufixo}`;
+    sufixo += 1;
+  }
+
+  const evento: Evento = {
+    ...input,
+    slug,
+    status: "rascunho",
+    inscricao: "em_breve",
+  };
+
+  mockEventos.push(evento);
+  return fake(evento);
+}
