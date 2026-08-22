@@ -63,6 +63,7 @@ export interface Evento {
   edicao?: string;
   descricao?: string;
   areaTematica?: string;
+  publicoAlvo?: string;
   instituicao?: string;
   local?: string;
   logoUrl?: string;

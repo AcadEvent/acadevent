@@ -1,7 +1,7 @@
 /**
  * ROTA: /gerenciar/eventos/novo
  * OWNER: Arthur   RF: RF01.1.1–5   PRIORIDADE: MVP
- * PROPÓSITO: Cadastro de novo evento (nome, sigla, edição, instituição, local, logo).
+ * PROPÓSITO: Cadastro de novo evento (dados cadastrais e identidade visual).
  * COMPONENTES: TextField, DatePicker, upload (react-hook-form + zod)
  * DADOS: postEvento() (via src/lib/api — nunca fetch direto)
  * ESTADOS: loading (Skeleton) / vazio (EmptyState) / erro (Alert)
@@ -40,22 +40,22 @@ import PageHeader from "@/components/layout/PageHeader";
 import { postEvento } from "@/lib/api";
 import type { Evento } from "@/lib/types";
 
-const TAMANHO_MAX_LOGO = 5 * 1024 * 1024;
-const TIPOS_LOGO = new Set([
+const TAMANHO_MAX_IMAGEM = 5 * 1024 * 1024;
+const TIPOS_IMAGEM = new Set([
   "image/jpeg",
   "image/png",
   "image/svg+xml",
   "image/webp",
 ]);
 
-const logoSchema = z
+const imagemSchema = z
   .instanceof(File, { message: "Selecione um arquivo válido." })
   .refine(
-    (arquivo) => TIPOS_LOGO.has(arquivo.type),
+    (arquivo) => TIPOS_IMAGEM.has(arquivo.type),
     "Use uma imagem JPG, PNG, SVG ou WebP.",
   )
   .refine(
-    (arquivo) => arquivo.size <= TAMANHO_MAX_LOGO,
+    (arquivo) => arquivo.size <= TAMANHO_MAX_IMAGEM,
     "O arquivo deve ter no máximo 5 MB.",
   );
 
@@ -84,6 +84,10 @@ const novoEventoSchema = z
       .string()
       .trim()
       .max(150, "Use no máximo 150 caracteres."),
+    publicoAlvo: z
+      .string()
+      .trim()
+      .max(255, "Use no máximo 255 caracteres."),
     instituicao: z
       .string()
       .trim()
@@ -93,6 +97,7 @@ const novoEventoSchema = z
     inicio: z.string().min(1, "Informe a data de início."),
     fim: z.string().min(1, "Informe a data de encerramento."),
     logoUrl: z.string().optional(),
+    bannerUrl: z.string().optional(),
   })
   .refine(
     ({ inicio, fim }) =>
@@ -112,10 +117,12 @@ const VALORES_INICIAIS: NovoEventoFormData = {
   instituicao: "",
   descricao: "",
   areaTematica: "",
+  publicoAlvo: "",
   inicio: "",
   fim: "",
   local: "",
   logoUrl: undefined,
+  bannerUrl: undefined,
 };
 
 function valorOpcional(valor: string): string | undefined {
@@ -132,17 +139,43 @@ function arquivoParaDataUrl(arquivo: File): Promise<string> {
         return;
       }
 
-      reject(new Error("Resultado inválido ao ler o logotipo."));
+      reject(new Error("Resultado inválido ao ler a imagem."));
     };
     leitor.onerror = () => reject(leitor.error);
     leitor.readAsDataURL(arquivo);
   });
 }
 
+async function processarImagem(arquivo?: File): Promise<{
+  dataUrl?: string;
+  nome?: string;
+  erro?: string;
+}> {
+  if (!arquivo) {
+    return {};
+  }
+
+  const validacao = imagemSchema.safeParse(arquivo);
+
+  if (!validacao.success) {
+    return { erro: validacao.error.issues[0]?.message };
+  }
+
+  try {
+    return {
+      dataUrl: await arquivoParaDataUrl(arquivo),
+      nome: arquivo.name,
+    };
+  } catch {
+    return { erro: "Não foi possível ler o arquivo selecionado." };
+  }
+}
+
 export default function NovoEventoPage() {
   const router = useRouter();
   const [erroEnvio, setErroEnvio] = useState<string | null>(null);
   const [nomeLogo, setNomeLogo] = useState<string | null>(null);
+  const [nomeBanner, setNomeBanner] = useState<string | null>(null);
   const {
     clearErrors,
     control,
@@ -167,8 +200,10 @@ export default function NovoEventoPage() {
       instituicao: dados.instituicao,
       descricao: valorOpcional(dados.descricao),
       areaTematica: valorOpcional(dados.areaTematica),
+      publicoAlvo: valorOpcional(dados.publicoAlvo),
       local: dados.local,
       logoUrl: dados.logoUrl,
+      bannerUrl: dados.bannerUrl,
       inicio: dayjs(dados.inicio).startOf("day").toISOString(),
       fim: dayjs(dados.fim).endOf("day").toISOString(),
     };
@@ -292,6 +327,15 @@ export default function NovoEventoPage() {
                   error={Boolean(errors.descricao)}
                   helperText={errors.descricao?.message ?? "Opcional"}
                 />
+                <TextField
+                  {...register("publicoAlvo")}
+                  label="Público-alvo"
+                  placeholder="Ex.: estudantes, docentes e profissionais da área"
+                  fullWidth
+                  disabled={isSubmitting}
+                  error={Boolean(errors.publicoAlvo)}
+                  helperText={errors.publicoAlvo?.message ?? "Opcional"}
+                />
               </Stack>
             </Paper>
 
@@ -384,7 +428,7 @@ export default function NovoEventoPage() {
                 Identidade visual
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                Adicione o logotipo que representará esta edição.
+                Adicione o logotipo e o banner que representarão esta edição.
               </Typography>
               <Divider sx={{ my: 3 }} />
 
@@ -411,45 +455,87 @@ export default function NovoEventoPage() {
                           type="file"
                           accept="image/jpeg,image/png,image/svg+xml,image/webp"
                           onChange={async (event) => {
-                            const arquivo = event.target.files?.[0];
+                            const resultado = await processarImagem(
+                              event.target.files?.[0],
+                            );
 
-                            if (!arquivo) {
-                              onChange(undefined);
-                              setNomeLogo(null);
-                              clearErrors("logoUrl");
-                              return;
-                            }
-
-                            const resultado = logoSchema.safeParse(arquivo);
-
-                            if (!resultado.success) {
+                            if (resultado.erro) {
                               onChange(undefined);
                               setNomeLogo(null);
                               setError("logoUrl", {
                                 type: "validate",
-                                message: resultado.error.issues[0]?.message,
+                                message: resultado.erro,
                               });
                               return;
                             }
 
-                            try {
-                              onChange(await arquivoParaDataUrl(arquivo));
-                              setNomeLogo(arquivo.name);
-                              clearErrors("logoUrl");
-                            } catch {
-                              onChange(undefined);
-                              setNomeLogo(null);
-                              setError("logoUrl", {
-                                type: "validate",
-                                message: "Não foi possível ler o arquivo selecionado.",
-                              });
-                            }
+                            onChange(resultado.dataUrl);
+                            setNomeLogo(resultado.nome ?? null);
+                            clearErrors("logoUrl");
                           }}
                           sx={{ display: "none" }}
                         />
                       </Button>
                       <Typography variant="body2" color="text.secondary">
                         {nomeLogo ?? "Nenhum arquivo selecionado"}
+                      </Typography>
+                    </Stack>
+                    <FormHelperText error={Boolean(fieldState.error)}>
+                      {fieldState.error?.message ??
+                        "JPG, PNG, SVG ou WebP, com até 5 MB. Campo opcional."}
+                    </FormHelperText>
+                  </Box>
+                )}
+              />
+
+              <Divider sx={{ my: 3 }} />
+
+              <Controller
+                name="bannerUrl"
+                control={control}
+                render={({ field: { onChange, ref }, fieldState }) => (
+                  <Box>
+                    <Stack
+                      direction={{ xs: "column", sm: "row" }}
+                      spacing={2}
+                      sx={{ alignItems: { xs: "flex-start", sm: "center" } }}
+                    >
+                      <Button
+                        component="label"
+                        variant="outlined"
+                        startIcon={<CloudUploadIcon />}
+                        disabled={isSubmitting}
+                      >
+                        Selecionar banner
+                        <Box
+                          component="input"
+                          ref={ref}
+                          type="file"
+                          accept="image/jpeg,image/png,image/svg+xml,image/webp"
+                          onChange={async (event) => {
+                            const resultado = await processarImagem(
+                              event.target.files?.[0],
+                            );
+
+                            if (resultado.erro) {
+                              onChange(undefined);
+                              setNomeBanner(null);
+                              setError("bannerUrl", {
+                                type: "validate",
+                                message: resultado.erro,
+                              });
+                              return;
+                            }
+
+                            onChange(resultado.dataUrl);
+                            setNomeBanner(resultado.nome ?? null);
+                            clearErrors("bannerUrl");
+                          }}
+                          sx={{ display: "none" }}
+                        />
+                      </Button>
+                      <Typography variant="body2" color="text.secondary">
+                        {nomeBanner ?? "Nenhum arquivo selecionado"}
                       </Typography>
                     </Stack>
                     <FormHelperText error={Boolean(fieldState.error)}>
