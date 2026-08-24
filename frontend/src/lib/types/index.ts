@@ -10,3 +10,4 @@ export * from "./comum";
 export * from "./eventos";
 export * from "./inscricoes";
 export * from "./submissoes";
+export * from "./auth";
