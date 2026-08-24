@@ -1,7 +1,7 @@
 # Arquitetura do Frontend — AcadEvent
 
-Versão: 1.0
-Data: 2026-08-12
+Versão: 1.1
+Data: 2026-08-12 (rev. 2026-08-18)
 Autor: Guilherme Zanan Piveta (SFE)
 Revisores: —
 
@@ -64,9 +64,9 @@ src/
     layout/                    # Header, Footer, Sidebar, DashboardShell, PageHeader, Section
     domain/                    # EventCard (+ EventListItem, EventFilters… a criar)
   lib/
-    types.ts                   # tipos de domínio + enums dos RFs
-    api/                       # camada de acesso a dados (contrato REST)
-    mock/                      # dados de exemplo (por trás de api/)
+    types/                     # tipos de domínio (index barrel + 1 arquivo por domínio)
+    api/                       # acesso a dados (index barrel + 1 arquivo por domínio)
+    mock/                      # dados de exemplo (por trás de api/, 1 arquivo por domínio)
     auth/                      # stub de sessão + RBAC (session.ts)
   proxy.ts                     # guarda de rotas RBAC (antigo "middleware")
 ```
@@ -74,15 +74,36 @@ src/
 **Route groups** (`(nome)`) agrupam por área de acesso **sem afetar a URL**. A
 landing vive em `(public)/page.tsx` para herdar o cabeçalho/rodapé públicos.
 
-## 4. Camada de dados (contrato REST)
+## 4. Camada de dados e tipos
 
 `src/lib/api/` é o **único ponto que conhece a origem dos dados**. Hoje as funções
 (`getEventos`, `getEvento`, …) retornam mock de `src/lib/mock/`; quando a API NestJS
 existir, troca-se o corpo por `fetch(\`${API_URL}/...\`)` **sem alterar as páginas**.
 
-**Regra:** páginas e componentes importam **sempre** de `@/lib/api` — nunca chamam
-`fetch` direto nem importam de `@/lib/mock`. A URL da API vem de
+**Regra:** páginas e componentes importam **sempre** de `@/lib/api` e `@/lib/types`
+— nunca chamam `fetch` direto nem importam de `@/lib/mock`. A URL da API vem de
 `NEXT_PUBLIC_API_URL`.
+
+### Divisão por domínio (evita colisões de merge)
+
+`types/`, `api/` e `mock/` são **divididos por domínio** (`eventos`, `inscricoes`,
+`submissoes`, …), cada um atrás de um **barrel** `index.ts`. Os caminhos de import
+(`@/lib/api`, `@/lib/types`) **não mudam** — o barrel re-exporta tudo. Motivo: com
+várias pessoas trabalhando em paralelo por vários dias (ver
+[atribuicoes.md](./atribuicoes.md)), um único arquivo compartilhado vira fonte
+constante de conflito. Assim, cada pessoa **edita/adiciona o seu arquivo de
+domínio**; para um domínio novo, cria `types/<dominio>.ts` (e `api/<dominio>.ts`,
+`mock/<dominio>.ts`) e o exporta no barrel correspondente.
+
+**Tipos são escritos à mão, não gerados.** Use `backend/prisma/schema.prisma` como
+**referência** de quais campos existem (para não inventar/divergir), mas o tipo do
+front pode **achatar e renomear** para a forma que a UI precisa (ex.: `Evento`
+funde `Evento`+`Edicao`; usa `slug` em vez de `id`). Mantenha-os mínimos — só o que
+a interface exibe — e adicione campos específicos do front quando fizer sentido.
+
+**Regra de merge:** ao terminar (fim do ciclo de build), antes de mandar para
+revisão, rode `git fetch && git rebase origin/dev` — quem escreveu a mudança
+resolve os próprios conflitos, em vez de passá-los ao time de aprovação.
 
 ## 5. Autenticação e RBAC
 

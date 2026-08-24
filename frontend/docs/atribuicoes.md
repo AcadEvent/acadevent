@@ -142,7 +142,7 @@ Atualize o status ao concluir. Legenda: ⬜ a fazer · 🟨 em andamento · ✅ 
 ### Igor — evento (público), inscrição e admin
 - ⬜ cronograma · atividades (+ [id]) · ministrantes (+ [id]) · patrocinadores ·
   anais · galeria · `/validar/[codigo]`
-- ⬜ `/eventos/[slug]/inscricao` (+ atividades, pagamento, confirmacao)
+- ✅ `/eventos/[slug]/inscricao` · ⬜ (+ atividades, pagamento, confirmacao)
 - ⬜ `/admin` · `/admin/usuarios` · `/admin/eventos` · `/admin/logs`
 
 ## 6. Fluxo de trabalho (Git)

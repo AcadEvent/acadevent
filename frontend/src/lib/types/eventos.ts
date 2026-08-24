@@ -1,22 +1,8 @@
 /**
- * Tipos de domínio consumidos pela UI do AcadEvent.
- *
- * Fonte: Documento de Requisitos v2.0 (RF01–RF16) + backend/prisma/schema.prisma.
- * O frontend é uma View pura que consome REST/JSON (RNF07.2); estes tipos
- * representam o formato esperado da API e serão alinhados ao contrato final.
- * Mantê-los mínimos: só os campos que a interface exibe.
+ * Domínio: Eventos (evento, atividades, ministrantes, patrocinadores, materiais).
+ * Referência: backend/prisma/schema.prisma (models Evento, Edicao, Atividade...).
+ * Ver docs/arquitetura-frontend.md §4.
  */
-
-/** Perfis de acesso (RF02, RBAC). */
-export type PerfilUsuario =
-  | "visitante"
-  | "participante"
-  | "ministrante"
-  | "patrocinador"
-  | "comissao"
-  | "organizador"
-  | "parecerista"
-  | "admin";
 
 /** Status do evento (RF01.3.3). */
 export type StatusEvento =
@@ -26,18 +12,8 @@ export type StatusEvento =
   | "encerrado"
   | "arquivado";
 
-/** Status de pagamento de uma inscrição (RF04.4). */
-export type StatusPagamento =
-  | "pendente"
-  | "confirmado"
-  | "cancelado"
-  | "estornado";
-
 /** Situação de inscrição pública do evento (RF01.5.3). */
 export type StatusInscricao = "abertas" | "encerradas" | "esgotadas" | "em_breve";
-
-/** Parecer de submissão (RF06.3). */
-export type ParecerSubmissao = "aceito" | "rejeitado" | "revisao";
 
 /** Tipos de atividade (RF05.1). */
 export type TipoAtividade =
@@ -97,13 +73,4 @@ export interface Evento {
   fim: string; // ISO
   aberturaInscricoes?: string; // ISO — para contagem regressiva (RF01.2.5)
   capacidade?: number;
-}
-
-export interface InscricaoEdicao {
-  id: string;
-  eventoSlug: string;
-  participante: string;
-  statusPagamento: StatusPagamento;
-  valor: number;
-  criadaEm: string; // ISO
 }

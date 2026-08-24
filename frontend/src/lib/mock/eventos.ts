@@ -102,4 +102,17 @@ export const mockAtividades: Atividade[] = [
     vagasRestantes: 6,
     ministrantesIds: ["m2"],
   },
+  {
+    id: "a3",
+    titulo: "Mesa-redonda: Carreiras em IA",
+    descricao: "Debate sobre trajetórias acadêmicas e de mercado em IA.",
+    tipo: "mesa_redonda",
+    inicio: "2026-10-15T10:00:00-03:00",
+    fim: "2026-10-15T11:30:00-03:00",
+    cargaHoraria: 1.5,
+    local: "Auditório A",
+    capacidade: 200,
+    vagasRestantes: 0,
+    ministrantesIds: ["m1", "m2"],
+  },
 ];
