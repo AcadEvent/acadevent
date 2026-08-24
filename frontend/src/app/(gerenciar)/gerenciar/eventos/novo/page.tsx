@@ -1,23 +1,33 @@
 /**
  * ROTA: /gerenciar/eventos/novo
  * OWNER: Arthur   RF: RF01.1.1–5   PRIORIDADE: MVP
- * PROPÓSITO: Cadastro de novo evento (nome, sigla, edição, instituição, local, logo).
+ * PROPÓSITO: Cadastro de novo evento (dados cadastrais e identidade visual).
  * COMPONENTES: TextField, DatePicker, upload (react-hook-form + zod)
  * DADOS: postEvento() (via src/lib/api — nunca fetch direto)
- * ESTADOS: loading (Skeleton) / vazio (EmptyState) / erro (Alert)
- * DONE: responsivo, usa tokens do tema (sem cor hardcoded), estados cobertos,
- *   este placeholder substituído por conteúdo real. Ver docs/atribuicoes.md.
+ * ESTADOS: erro de envio (Alert) tratado no formulário
+ * DONE: página (server) monta o shell + metadata; formulário isolado em
+ *   NovoEventoForm.tsx (client). Ver docs/atribuicoes.md.
  */
-import PagePlaceholder from "@/components/ui/PagePlaceholder";
+import type { Metadata } from "next";
 
-export default function Page() {
+import Container from "@mui/material/Container";
+
+import PageHeader from "@/components/layout/PageHeader";
+
+import NovoEventoForm from "./NovoEventoForm";
+
+export const metadata: Metadata = {
+  title: "Novo evento",
+};
+
+export default function NovoEventoPage() {
   return (
-    <PagePlaceholder
-      title={"Novo evento"}
-      owner={"Arthur"}
-      rf={"RF01.1.1–5"}
-      priority={"MVP"}
-      summary={"Cadastro de novo evento (nome, sigla, edição, instituição, local, logo)."}
-    />
+    <Container maxWidth="md" disableGutters>
+      <PageHeader
+        title="Novo evento"
+        subtitle="Cadastre as informações iniciais. O evento será criado como rascunho."
+      />
+      <NovoEventoForm />
+    </Container>
   );
 }
