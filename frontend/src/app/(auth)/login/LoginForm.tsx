@@ -48,7 +48,7 @@ function destinoSeguro(redirect: string | null): string {
 export default function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const destino = destinoSeguro(searchParams.get("redirect"));
+  const destino = destinoSeguro(searchParams?.get("redirect") ?? null);
 
   const [erro, setErro] = useState<string | null>(null);
   const [senhaVisivel, setSenhaVisivel] = useState(false);
