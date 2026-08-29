@@ -3,7 +3,7 @@
  * OWNER: Arthur   RF: RF01.3.3   PRIORIDADE: MVP
  * PROPÓSITO: Lista de eventos que o usuário organiza.
  * COMPONENTES: Grid, EventCard, Button(novo)
- * DADOS: getEventos() (via src/lib/api — nunca fetch direto)
+ * DADOS: getEventosOrganizador() (via src/lib/api — nunca fetch direto)
  * ESTADOS: loading (Skeleton) / vazio (EmptyState) / erro (Alert)
  * DONE: responsivo, usa tokens do tema (sem cor hardcoded), estados cobertos,
  *   este placeholder substituído por conteúdo real. Ver docs/atribuicoes.md.
@@ -31,7 +31,7 @@ import { useEffect, useState } from "react";
 
 import PageHeader from "@/components/layout/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
-import { getEventos } from "@/lib/api";
+import { getEventosOrganizador } from "@/lib/api";
 import type { Evento, StatusEvento } from "@/lib/types";
 
 const STATUS_LABEL: Record<StatusEvento, string> = {
@@ -184,7 +184,7 @@ export default function EventosOrganizadorPage() {
   useEffect(() => {
     let ativo = true;
 
-    getEventos()
+    getEventosOrganizador()
       .then((resultado) => {
         if (ativo) {
           setEventos(resultado);
