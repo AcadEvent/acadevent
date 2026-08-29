@@ -14,7 +14,6 @@ export function getEventos(): Promise<Evento[]> {
   return fake(mockEventos);
 }
 
-/** Eventos pertencentes ao organizador autenticado. */
 export function getEventosOrganizador(): Promise<Evento[]> {
   return fake(mockEventos);
 }
