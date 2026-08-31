@@ -14,6 +14,10 @@ export function getEventos(): Promise<Evento[]> {
   return fake(mockEventos);
 }
 
+export function getEventosOrganizador(): Promise<Evento[]> {
+  return fake(mockEventos);
+}
+
 export function getEvento(slug: string): Promise<Evento | null> {
   return fake(mockEventos.find((e) => e.slug === slug) ?? null);
 }
