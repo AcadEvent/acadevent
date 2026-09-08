@@ -16,7 +16,7 @@ Optamos por centralizar a camada de apresentação (`frontend/`) e a camada de l
 
 ### 2. Conteinerização Integral (Atendimento ao RNF05.1)
 
-Todo o ambiente de desenvolvimento local foi encapsulado via **Docker e Docker Compose**. Nenhum desenvolvedor precisa instalar instâncias locais de bancos de dados ou drivers específicos em suas máquinas operacionais. Isso elimina o clássico problema de inconsistência de ambientes, garantindo paridade absoluta entre Windows (WSL), Linux e macOS.
+O desenvolvimento local usa **Docker Compose** (`docker-compose.yml` + `Dockerfile.dev`) para subir frontend, backend e Postgres juntos. Em produção no **Quave ONE**, cada camada é um **app/env separado** (não usamos Compose): Postgres gerenciado como Databases & Services, e `backend` / `frontend` cada um com seu `Dockerfile` de produção, implantados via CLI (`--dir`) ou GitHub. Nenhum desenvolvedor precisa instalar bancos ou drivers locais; o ambiente de equipe permanece alinhado entre Windows (WSL), Linux e macOS.
 
 ### 3. PostgreSQL 17 e Prevenção de Injeção SQL (Atendimento ao RNF07.4 e RNF03.3)
 
@@ -24,11 +24,9 @@ Adotamos o **PostgreSQL 17-alpine** como o banco de dados relacional oficial do 
 
 ### 4. Resolução de Rede e Portas Coexistentes (Atendimento ao RNF07.1)
 
-Para mitigar os bloqueios nativos de isolamento de rede do Docker, aplicamos configurações específicas de escuta:
+**Local (Compose):** backend `3000`, frontend `3001`, Postgres `5432`, rede `acadevent_network`.
 
-* **Backend (NestJS):** Rodando nativamente na porta `3000`.
-* **Frontend (Next.js):** Configurado explicitamente via variáveis de ambiente (`PORT: 3001` e `HOSTNAME: 0.0.0.0`) para escutar requisições externas de fora do container, coexistindo pacificamente com a porta do backend.
-* Ambos operam integrados sob uma rede privada virtual isolada do tipo `bridge` (`acadevent_network`).
+**Quave ONE (prod):** cada app/env escuta na porta configurada no Quave (hoje **3000** no `backend` e no `frontend`). O Postgres é um app Databases & Services separado, acessado via `DATABASE_URL` (URL interna do Quave).
 
 ### 5. Organização de Código "Package by Feature" (Atendimento ao RNF05.2)
 
@@ -43,17 +41,23 @@ acadevent/                    # Pasta raiz do Monorepo
 ├── .postgres-data/           # Dados persistidos do banco PostgreSQL (Ignorado no Git)
 ├── docs/                     # Documentação geral do projeto (padrões, governança)
 ├── backend/                  # Camada de Lógica de Negócio (NestJS)
-│   ├── docs/                 # Decisões de arquitetura e documentação do backend
-│   ├── prisma/               # Esquemas e migrações do banco de dados
-│   ├── src/                  # Código-fonte da API REST (TypeScript)
-│   ├── Dockerfile.dev        # Receita de container para o ambiente de desenvolvimento
-│   └── .env                  # Variáveis de ambiente locais do backend (Ignorado no Git)
-├── frontend/                 # Camada de Apresentação (React + Next.js App Router)
-│   ├── docs/                 # Decisões de design e documentação do frontend
-│   ├── src/                  # Componentes e páginas da interface (TypeScript)
-│   └── Dockerfile.dev        # Receita de container para o ambiente de desenvolvimento
-├── .gitignore                # Escudo global de arquivos ignorados no controle de versão
-└── docker-compose.yml        # Orquestrador oficial do ecossistema de containers
+│   ├── docs/
+│   ├── prisma/
+│   ├── src/
+│   ├── Dockerfile            # Produção Quave ONE (CLI --dir backend)
+│   ├── Dockerfile.dev        # Desenvolvimento (Compose)
+│   ├── .dockerignore
+│   ├── .quaveoneignore
+│   └── .env                  # Local only (Ignorado no Git)
+├── frontend/                 # Camada de Apresentação (Next.js)
+│   ├── docs/
+│   ├── src/
+│   ├── Dockerfile            # Produção Quave ONE (CLI --dir frontend)
+│   ├── Dockerfile.dev        # Desenvolvimento (Compose)
+│   ├── .dockerignore
+│   └── .quaveoneignore
+├── .gitignore
+└── docker-compose.yml        # Stack local apenas
 
 ```
 
@@ -70,59 +74,77 @@ Antes de inicializar o projeto, certifique-se de possuir instalado em sua máqui
 
 ---
 
-## 🚀 Como Executar o Projeto (Passo a Passo)
+## 🚀 Como Executar o Projeto
 
-Siga rigorosamente as instruções abaixo para clonar e rodar o projeto localmente:
-
-### 1. Clonar o Repositório
-
-Use sempre a URL **SSH** para clonar de forma segura sem requisições repetitivas de tokens:
+### Local (Docker Compose)
 
 ```bash
 git clone git@github.com:AcadEvent/acadevent.git
 cd acadevent
-
-```
-
-### 2. Inicializar o Git Flow Localmente
-
-Para garantir que as ramificações de tarefas funcionem no padrão do projeto, rode o comando abaixo na pasta raiz:
-
-```bash
 git flow init -d
-
 ```
 
-*(A flag `-d` aceita automaticamente todas as nomenclaturas padrão do fluxo: `main`, `develop`, `feature/`, etc.)*
-
-### 3. Configurar as Variáveis de Ambiente locais
-
-O Prisma ORM necessita de um arquivo de credenciais local para se comunicar com o banco de dados de desenvolvimento.
-Acesse a pasta do backend, verifique se o arquivo `.env` foi criado e certifique-se de que a variável `DATABASE_URL` está preenchida exatamente assim:
+Configure `backend/.env` (Prisma fora do Compose, se necessário):
 
 ```text
 DATABASE_URL="postgresql://acadevent_admin:acadevent_local_pwd@localhost:5432/acadevent_db?schema=public"
-
 ```
-
-### 4. Subir o Ecossistema Docker
-
-Retorne para a **pasta raiz do monorepo** (`acadevent/`) e execute o comando de inicialização automática dos containers:
 
 ```bash
 docker compose up
-
 ```
 
-*Nota: Na primeiríssima vez que você executar esse comando, o Docker irá construir as imagens e instalar as dependências do zero, o que pode levar cerca de 1 a 3 minutos. Nas execuções seguintes, o carregamento é instantâneo.*
+Serviços isolados:
 
-### 5. Verificar a Disponibilidade das Camadas
+```bash
+docker compose up postgres backend
+docker compose up frontend
+docker compose up postgres
+```
 
-Com os containers ativos, abra o seu navegador e certifique-se de que os seguintes endereços estão respondendo:
+- **Frontend:** http://localhost:3001
+- **Backend/API:** http://localhost:3000
+- **PostgreSQL:** porta `5432`
 
-* **Camada de Apresentação (Frontend):** [http://localhost:3001](https://www.google.com/search?q=http://localhost:3001) (Interface Next.js com Tailwind CSS)
-* **Camada de Lógica (Backend/API):** [http://localhost:3000](https://www.google.com/search?q=http://localhost:3000) (Mensagem "Hello World!" do NestJS)
-* **Camada de Dados (Banco PostgreSQL):** Rodando de forma isolada na porta `5432`.
+Derrubar: `docker compose down`
+
+### Produção (Quave ONE — um app/env por camada)
+
+O Quave ONE **não** executa Compose. Cada serviço é um App com seu environment:
+
+| Camada | Quave App | Env CLI name | Deploy |
+| --- | --- | --- | --- |
+| Dados | `Database` (`POSTGRESQL`) | `vitor-teste-database-production` | Gerenciado pela plataforma |
+| API | `backend` | `vitor-teste-backend-production` | `backend/Dockerfile` · porta **3000** |
+| UI | `frontend` | `vitor-teste-frontend-production` | `frontend/Dockerfile` · porta **3000** |
+
+Hosts públicos: API `https://api.erwinlabs.dev`, app `https://app.erwinlabs.dev`.
+
+#### Configuração esperada no Quave
+
+- **Docker:** `CUSTOM` com `Dockerfile` **dentro** da pasta enviada (`backend/` ou `frontend/`).
+- **CLI `--dir`:** envie só a pasta do app. Com `--dir backend`, o path do Dockerfile é `Dockerfile` (não `backend/Dockerfile`).
+- **Port** do app env = `EXPOSE` do Dockerfile (`3000`).
+- **Backend:** `DATABASE_URL` (tipo `BOTH`/`DEPLOY`) = URL interna do Postgres Quave.
+- **Frontend:** `NEXT_PUBLIC_API_URL` tipo `BOTH` (entra no build do Next), `PORT=3000`, `HOSTNAME=0.0.0.0`. No browser use a URL **pública** da API (`https://api.erwinlabs.dev`).
+
+#### Deploy via CLI
+
+```bash
+quaveone deploy \
+  --user-token <token> \
+  --env vitor-teste-backend-production \
+  --dir backend \
+  --wait
+
+quaveone deploy \
+  --user-token <token> \
+  --env vitor-teste-frontend-production \
+  --dir frontend \
+  --wait
+```
+
+Cada pasta tem `.quaveoneignore` para não enviar `node_modules`, builds e `.env`.
 
 ---
 
