@@ -6,6 +6,7 @@ import type { Atividade, Evento, Ministrante } from "@/lib/types";
 import {
   mockAtividades,
   mockEventos,
+  mockMeusEventosSlugs,
   mockMinistrantes,
 } from "@/lib/mock/eventos";
 import { fake } from "./_client";
@@ -16,6 +17,13 @@ export function getEventos(): Promise<Evento[]> {
 
 export function getEventosOrganizador(): Promise<Evento[]> {
   return fake(mockEventos);
+}
+
+/** Eventos dos quais o participante autenticado faz parte (RF03.1.1). */
+export function getMeusEventos(): Promise<Evento[]> {
+  return fake(
+    mockEventos.filter((evento) => mockMeusEventosSlugs.includes(evento.slug)),
+  );
 }
 
 export function getEvento(slug: string): Promise<Evento | null> {
