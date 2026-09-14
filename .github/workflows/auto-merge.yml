@@ -13,6 +13,9 @@ jobs:
   sync-branches:
     name: Syncing dev to main
     runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.changes.outputs.backend }}
+      frontend: ${{ steps.changes.outputs.frontend }}
 
     steps:
       - name: Checkout repository
@@ -21,6 +24,7 @@ jobs:
           fetch-depth: 0
 
       - name: Sync main with dev
+        id: sync
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -34,6 +38,9 @@ jobs:
           git fetch origin
 
           git switch -C main origin/main
+          BEFORE_MAIN=$(git rev-parse HEAD)
+          echo "before_main=$BEFORE_MAIN" >> "$GITHUB_OUTPUT"
+
           git merge --ff-only origin/dev
 
           if git push origin main; then
@@ -47,4 +54,40 @@ jobs:
               exit 1
             fi
             gh pr merge "$PR_NUMBER" --merge --auto
+            git fetch origin main
           fi
+
+      - name: Detect changed paths for deploy
+        id: changes
+        run: |
+          BEFORE_MAIN="${{ steps.sync.outputs.before_main }}"
+          AFTER_MAIN=$(git rev-parse main)
+          CHANGED=$(git diff --name-only "$BEFORE_MAIN" "$AFTER_MAIN" || true)
+          echo "Files changed on main ($BEFORE_MAIN..$AFTER_MAIN):"
+          echo "$CHANGED"
+
+          BACKEND=false
+          FRONTEND=false
+          if printf '%s\n' "$CHANGED" | grep -qE '^(backend/|\.github/workflows/quaveone-deploy-backend\.yml$)'; then
+            BACKEND=true
+          fi
+          if printf '%s\n' "$CHANGED" | grep -qE '^(frontend/|\.github/workflows/quaveone-deploy-frontend\.yml$)'; then
+            FRONTEND=true
+          fi
+
+          echo "backend=$BACKEND" >> "$GITHUB_OUTPUT"
+          echo "frontend=$FRONTEND" >> "$GITHUB_OUTPUT"
+
+  deploy-backend:
+    name: Deploy backend from main
+    needs: sync-branches
+    if: needs.sync-branches.outputs.backend == 'true'
+    uses: ./.github/workflows/quaveone-deploy-backend.yml
+    secrets: inherit
+
+  deploy-frontend:
+    name: Deploy frontend from main
+    needs: sync-branches
+    if: needs.sync-branches.outputs.frontend == 'true'
+    uses: ./.github/workflows/quaveone-deploy-frontend.yml
+    secrets: inherit
