@@ -7,6 +7,8 @@ import { InscricoesModule } from './inscricoes/inscricoes.module';
 import { PagamentosModule } from './pagamentos/pagamentos.module';
 import { EspacosModule } from './espacos/espacos.module';
 import { InventarioModule } from './inventario/inventario.module';
+import { SubmissoesModule } from './submissoes/submissoes.module';
+import { CertificadosModule } from './certificados/certificados.module';
 
 @Module({
   imports: [
@@ -16,6 +18,8 @@ import { InventarioModule } from './inventario/inventario.module';
     PagamentosModule,
     EspacosModule,
     InventarioModule,
+    SubmissoesModule,
+    CertificadosModule,
   ],
   controllers: [AppController],
   providers: [AppService],
