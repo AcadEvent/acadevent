@@ -1,6 +1,6 @@
 # Workflows do GitHub Actions - AcadEvent
 
-- Versão: 1.2
+- Versão: 1.3
 - Data: 2026-09-14
 - Autores: José Carlos da Silva Filho (SPM), João Vitor Antunes da Silva (SPM)
 - Revisores: —
@@ -15,7 +15,7 @@ Este diretório contém as automações do **GitHub Actions** utilizadas no repo
 
 | Workflow | Arquivo | Descrição Sucinta |
 | --- | --- | --- |
-| **Auto Assign** | `auto-assign.yml` | Solicita revisores de código automaticamente em Pull Requests abertos, reabertos ou marcados como prontos para revisão. |
+| **Auto Assign** | `auto-assign.yml` | Solicita um revisor aleatório do grupo SPR (QA) em Pull Requests abertos, reabertos ou marcados como prontos para revisão. |
 | **Sync Dev to Main** | `auto-merge.yml` | Sincroniza a branch `dev` com a branch `main` de forma automática (via fast-forward ou PR automático) a cada push/merge na `dev`. Em seguida chama os deploys do Quave ONE para as camadas cujo conteúdo mudou na `main`. |
 | **Validar Documentação** | `check-docs.yml` | Verifica se todos os arquivos Markdown (`.md`) alterados no repositório contêm o cabeçalho de metadados obrigatório. |
 | **Conventional Commit Checks** | `conventional-commits.yml` | Valida se as mensagens de commit e os títulos dos Pull Requests seguem a especificação Conventional Commits. |
