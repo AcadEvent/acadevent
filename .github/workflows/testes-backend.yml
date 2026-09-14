@@ -33,6 +33,9 @@ jobs:
         run: npm ci
 
       - name: Gerar Prisma Client
+        env:
+          # generate nao conecta; a URL precisa existir porque o prisma.config.ts exige
+          DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci?schema=public
         run: npx prisma generate
 
       - name: Executar suite de testes do Backend

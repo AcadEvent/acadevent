@@ -164,7 +164,6 @@ describe('InscricoesService', () => {
         id_pagamento: 1,
         status: 'Recusado',
       });
-
       await service.processarWebhook({ gateway_id: '123', status: 'Recusado' });
       expect(prisma.pagamento.update).toHaveBeenCalled();
       expect(prisma.$transaction).not.toHaveBeenCalled();

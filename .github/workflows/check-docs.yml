@@ -25,8 +25,8 @@ jobs:
       - name: Validar padrao em arquivos .md alterados
         shell: bash
         run: |
-          git fetch origin develop:origin/develop || true
-          BASE_REF="origin/develop"
+          git fetch origin dev:origin/dev || true
+          BASE_REF="origin/dev"
           if ! git rev-parse "$BASE_REF" >/dev/null 2>&1; then
             BASE_REF="HEAD~1"
           fi

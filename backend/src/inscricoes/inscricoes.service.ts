@@ -211,24 +211,23 @@ export class InscricoesService {
       });
     }
 
+    if (dto.status !== 'Cancelado' && dto.status !== 'Estornado') {
+      return this.prisma.pagamento.update({
+        where: { id_pagamento: pagamento.id_pagamento },
+        data: { status: dto.status },
+      });
+    }
     const novoStatusInscricao =
-      dto.status === 'Cancelado'
-        ? 'Cancelada'
-        : dto.status === 'Estornado'
-        ? 'Estornada'
-        : 'Pendente';
-
+      dto.status === 'Cancelado' ? 'Cancelada' : 'Estornada';
     return this.prisma.$transaction(async (tx) => {
       const pagAtualizado = await tx.pagamento.update({
         where: { id_pagamento: pagamento.id_pagamento },
         data: { status: dto.status },
       });
-
       const inscricaoAtualizada = await tx.inscricaoEdicao.update({
         where: { id_inscricao_edicao: pagamento.id_inscricao_edicao },
         data: { status: novoStatusInscricao },
       });
-
       return { pagamento: pagAtualizado, inscricao: inscricaoAtualizada };
     });
   }
