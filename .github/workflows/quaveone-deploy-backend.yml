@@ -1,0 +1,30 @@
+name: Deploy backend
+
+on:
+  # Fallback: push direto ou merge de PR na main feito sem GITHUB_TOKEN.
+  # O caminho normal (auto-merge.yml com GITHUB_TOKEN) não dispara este evento.
+  push:
+    branches: ['main']
+    paths: ['backend/**', '.github/workflows/quaveone-deploy-backend.yml']
+
+  # Caminho principal: Sync Dev to Main chama este workflow após atualizar a main.
+  workflow_call:
+
+jobs:
+  testes-backend:
+    uses: ./.github/workflows/testes-backend.yml
+
+  deploy:
+    needs: testes-backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+      - name: Deploy
+        uses: quaveone/quaveone-deploy-action@main
+        with:
+          user-token: ${{ secrets.QUAVEONE_USER_TOKEN }}
+          env: "vitor-teste-backend-production"
+          dir: "backend/"
+          cli-extra-args: "--wait"
