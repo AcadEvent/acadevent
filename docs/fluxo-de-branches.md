@@ -1,8 +1,8 @@
 # Guia de Governança Git e Fluxo de Branches - AcadEvent
 
-- Versão: 1.1
-- Data: 2026-08-06
-- Autor: José Carlos da Silva Filho (SPM)
+- Versão: 1.2
+- Data: 2026-09-14
+- Autores: José Carlos da Silva Filho (SPM), João Vitor Antunes da Silva (SPM)
 - Revisores: —
 
 ---
@@ -136,7 +136,7 @@ npm test
 
 | Arquivo | Dispara Em | O que faz |
 | --- | --- | --- |
-| `auto-assign.yml` | PRs para branches diferentes de `main` | Atribui automaticamente revisores aos Pull Requests abertos. |
+| `auto-assign.yml` | PRs para branches diferentes de `main` | Atribui automaticamente um revisor aleatório do grupo SPR (QA) aos Pull Requests abertos. |
 | `auto-merge.yml` | Push na branch `dev` | Sincroniza automaticamente as alterações da branch `dev` para a branch `main` (read-only). |
 | `check-docs.yml` | PRs ou Pushes alterando arquivos `.md` | Verifica se os arquivos de documentação alterados contêm o cabeçalho obrigatório de metadados. |
 | `conventional-commits.yml` | Pushes em branches de trabalho ou PRs | Valida se as mensagens de commit e o título do PR seguem a especificação Conventional Commits. |
