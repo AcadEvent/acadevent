@@ -8,9 +8,6 @@ interface MockPrismaService {
   loteIngresso: {
     findUnique: jest.Mock;
   };
-  inscricaoEdicao: {
-    count: jest.Mock;
-  };
   perfilParticipante: {
     findUnique: jest.Mock;
   };
@@ -21,6 +18,7 @@ interface MockPrismaService {
     findFirst: jest.Mock;
     update: jest.Mock;
   };
+  $queryRaw: jest.Mock;
   $transaction: jest.Mock;
 }
 
@@ -33,9 +31,6 @@ describe('InscricoesService', () => {
       loteIngresso: {
         findUnique: jest.fn(),
       },
-      inscricaoEdicao: {
-        count: jest.fn(),
-      },
       perfilParticipante: {
         findUnique: jest.fn(),
       },
@@ -46,23 +41,25 @@ describe('InscricoesService', () => {
         findFirst: jest.fn(),
         update: jest.fn(),
       },
-      $transaction: jest.fn(
-        (callback: (tx: Prisma.TransactionClient) => Promise<unknown>) => {
-          const tx = {
-            cupom: { update: jest.fn() },
-            inscricaoEdicao: {
-              create: jest.fn().mockResolvedValue({ id_inscricao_edicao: 1 }),
-              update: jest.fn().mockResolvedValue({ id_inscricao_edicao: 1 }),
-            },
-            pagamento: {
-              create: jest.fn().mockResolvedValue({ id_pagamento: 1 }),
-              update: jest.fn().mockResolvedValue({ id_pagamento: 1 }),
-            },
-          };
-          return callback(tx as unknown as Prisma.TransactionClient);
-        },
-      ),
+      $queryRaw: jest.fn().mockResolvedValue([{ id_inscricao_edicao: 1 }]),
+      $transaction: jest.fn(),
     };
+
+    prisma.$transaction.mockImplementation(
+      (callback: (tx: Prisma.TransactionClient) => Promise<unknown>) => {
+        const tx = {
+          $queryRaw: prisma.$queryRaw,
+          inscricaoEdicao: {
+            update: jest.fn().mockResolvedValue({ id_inscricao_edicao: 1 }),
+          },
+          pagamento: {
+            create: jest.fn().mockResolvedValue({ id_pagamento: 1 }),
+            update: jest.fn().mockResolvedValue({ id_pagamento: 1 }),
+          },
+        };
+        return callback(tx as unknown as Prisma.TransactionClient);
+      },
+    );
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -100,7 +97,7 @@ describe('InscricoesService', () => {
       );
     });
 
-    it('deve lançar BadRequestException se lote estiver cheio', async () => {
+    it('deve lançar BadRequestException se o lote estiver esgotado na rotina SQL', async () => {
       prisma.loteIngresso.findUnique.mockResolvedValue({
         id_lote: 1,
         data_abertura_lote: new Date(Date.now() - 10000),
@@ -108,14 +105,20 @@ describe('InscricoesService', () => {
         numero_max_ingressos: 10,
         preco: new Prisma.Decimal(100),
       });
-      prisma.inscricaoEdicao.count.mockResolvedValue(10);
+      prisma.perfilParticipante.findUnique.mockResolvedValue({
+        id_participante: 1,
+      });
+      prisma.$queryRaw.mockRejectedValue(
+        new Error('Erro: Este lote de ingressos ja esta esgotado.'),
+      );
 
       await expect(service.criarInscricao(1, { id_lote: 1 })).rejects.toThrow(
         BadRequestException,
       );
+      expect(prisma.$queryRaw).toHaveBeenCalled();
     });
 
-    it('deve criar inscricao com sucesso sem cupom', async () => {
+    it('deve criar inscricao com sucesso sem cupom via sp_realizar_inscricao_edicao', async () => {
       prisma.loteIngresso.findUnique.mockResolvedValue({
         id_lote: 1,
         data_abertura_lote: new Date(Date.now() - 10000),
@@ -123,7 +126,6 @@ describe('InscricoesService', () => {
         numero_max_ingressos: 10,
         preco: new Prisma.Decimal(100),
       });
-      prisma.inscricaoEdicao.count.mockResolvedValue(5);
       prisma.perfilParticipante.findUnique.mockResolvedValue({
         id_participante: 1,
       });
@@ -131,6 +133,7 @@ describe('InscricoesService', () => {
       const result = await service.criarInscricao(1, { id_lote: 1 });
       expect(result).toBeDefined();
       expect(prisma.$transaction).toHaveBeenCalled();
+      expect(prisma.$queryRaw).toHaveBeenCalled();
     });
   });
 

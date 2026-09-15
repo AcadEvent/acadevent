@@ -1,9 +1,9 @@
 # Documentação do Backend — AcadEvent
 
-Versão: 0.1  
-Data: 2026-06-09  
-Autor: João Vitor Antunes da Silva (SPM)  
-Revisores: —
+- Versão: 0.2
+- Data: 2026-09-14
+- Autor: João Vitor Antunes da Silva (SPM)
+- Revisores: —
 
 ---
 
@@ -20,6 +20,19 @@ Centralizar decisões que impactam a API REST, o modelo de dados, a organizaçã
 | Documento | Conteúdo |
 | --- | --- |
 | _A definir_ | — |
+
+## Persistência local (Prisma)
+
+O esquema e as migrações ficam em `backend/prisma/`. A carga inicial de demonstração veio de `ScriptsBD/script_insert_into_tables.sql` do repositório [AcadEvent/documents](https://github.com/AcadEvent/documents) e está em `backend/prisma/seed.ts`. As rotinas de negócio (`sp_*`) estão em `backend/prisma/sql/procedures.sql` e na migração `align_scripts_bd`.
+
+A partir de `backend/`, com `DATABASE_URL` apontando para o Postgres do `docker-compose.yml` da raiz:
+
+```bash
+npx prisma migrate deploy
+npx prisma db seed
+```
+
+Não altere Dockerfiles nem o `docker-compose.yml` para aplicar o schema: o caminho oficial é Prisma Migrate + seed.
 
 ## Escopo deste diretório
 

@@ -34,12 +34,12 @@ model Usuario {
 }
 
 model Notificacao {
-  id_notificacao Int      @id @default(autoincrement())
+  id_notificacao Int       @id @default(autoincrement())
   id_usuario     Int
-  titulo         String   @db.VarChar(255)
-  mensagem       String   @db.Text
+  titulo         String    @db.VarChar(255)
+  mensagem       String    @db.Text
   data           DateTime? @default(now()) @db.Timestamp
-  usuario        Usuario  @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
+  usuario        Usuario   @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
 
   @@map("notificacao")
 }
@@ -62,24 +62,25 @@ model PerfilAdministrador {
 }
 
 model PerfilOrganizador {
-  id_organizador Int      @id @default(autoincrement())
-  id_usuario     Int      @unique
-  usuario        Usuario  @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
+  id_organizador Int                  @id @default(autoincrement())
+  id_usuario     Int                  @unique
+  usuario        Usuario              @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
   eventos        Evento[]
+  registros      RegistroInventario[]
 
   @@map("perfil_organizador")
 }
 
 model PerfilMinistrante {
-  id_ministrante     Int                   @id @default(autoincrement())
-  id_usuario         Int                   @unique
-  biografia          String?               @db.Text
-  area_atuacao       String?               @db.VarChar(150)
-  instituicao_origem String?               @db.VarChar(255)
-  url_foto           String?               @db.Text
+  id_ministrante     Int                    @id @default(autoincrement())
+  id_usuario         Int                    @unique
+  biografia          String?                @db.Text
+  area_atuacao       String?                @db.VarChar(150)
+  instituicao_origem String?                @db.VarChar(255)
+  url_foto           String?                @db.Text
   atividades         AtividadeMinistrante[]
   registros          RegistroInventario[]
-  usuario            Usuario               @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
+  usuario            Usuario                @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
 
   @@map("perfil_ministrante")
 }
@@ -103,10 +104,10 @@ model PerfilParecerista {
 }
 
 model PerfilAutor {
-  id_autor    Int         @id @default(autoincrement())
-  id_usuario  Int         @unique
-  usuario     Usuario     @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
-  submissoes  Submissao[]
+  id_autor   Int         @id @default(autoincrement())
+  id_usuario Int         @unique
+  usuario    Usuario     @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
+  submissoes Submissao[]
 
   @@map("perfil_autor")
 }
@@ -127,26 +128,39 @@ model Evento {
 }
 
 model Edicao {
-  id_edicao                    Int             @id @default(autoincrement())
+  id_edicao                    Int                         @id @default(autoincrement())
   id_evento                    Int
-  titulo_oficial               String          @db.VarChar(255)
-  numero_edicao                String?         @db.VarChar(50)
-  sigla                        String?         @db.VarChar(50)
-  unidade_promotora            String?         @db.VarChar(255)
-  area_tematica                String?         @db.VarChar(150)
-  descricao_geral              String?         @db.Text
-  url_logotipo                 String?         @db.Text
-  publico_alvo                 String?         @db.VarChar(255)
-  url_rede_social              String?         @db.Text
-  url_site                     String?         @db.Text
-  data_abertura_evento         DateTime?       @db.Timestamp
-  data_encerramento_evento     DateTime?       @db.Timestamp
-  data_encerramento_submissoes DateTime?       @db.Timestamp
-  status_evento                String?         @default("Ativo") @db.VarChar(100)
+  titulo_oficial               String                      @db.VarChar(255)
+  numero_edicao                String?                     @db.VarChar(50)
+  sigla                        String?                     @db.VarChar(50)
+  unidade_promotora            String?                     @db.VarChar(255)
+  area_tematica                String?                     @db.VarChar(150)
+  descricao_geral              String?                     @db.Text
+  url_logotipo                 String?                     @db.Text
+  publico_alvo                 String?                     @db.VarChar(255)
+  url_rede_social              String?                     @db.Text
+  url_site                     String?                     @db.Text
+  data_abertura_evento         DateTime?                   @db.Timestamp
+  data_encerramento_evento     DateTime?                   @db.Timestamp
+  data_encerramento_submissoes DateTime?                   @db.Timestamp
+  status_evento                String?                     @default("Ativo") @db.VarChar(100)
   capacidade_max_participantes Int?
-  endereco                     String?         @db.Text
-  evento                       Evento          @relation(fields: [id_evento], references: [id_evento], onDelete: Cascade)
+  endereco                     String?                     @db.Text
+  evento                       Evento                      @relation(fields: [id_evento], references: [id_evento], onDelete: Cascade)
   gruposTrabalho               GrupoTrabalho[]
+  lotes                        LoteIngresso[]
+  cupons                       Cupom[]
+  atividades                   Atividade[]
+  espacos                      EspacoFisico[]
+  itensInventario              ItemInventarioFisico[]
+  certificados                 Certificado[]
+  anais                        Anais[]
+  comunicados                  Comunicado[]
+  midias                       MidiaEvento[]
+  patrocinadores               Patrocinador[]
+  modelosTrabalho              ModeloTrabalhoCientifico[]
+  modelosCertificado           ModeloCertificado[]
+  signatarios                  Signatario[]
 
   @@map("edicao")
 }
@@ -189,40 +203,42 @@ model Turno {
 // ==========================================
 
 model LoteIngresso {
-  id_lote                 Int                @id @default(autoincrement())
-  id_edicao               Int
-  nome_lote               String             @db.VarChar(150)
-  data_abertura_lote      DateTime?          @db.Timestamp
-  data_encerramento_lote  DateTime?          @db.Timestamp
-  preco                   Decimal            @db.Decimal(10, 2)
-  numero_max_ingressos    Int
-  inscricoes              InscricaoEdicao[]
+  id_lote                Int               @id @default(autoincrement())
+  id_edicao              Int
+  nome_lote              String            @db.VarChar(150)
+  data_abertura_lote     DateTime?         @db.Timestamp
+  data_encerramento_lote DateTime?         @db.Timestamp
+  preco                  Decimal           @db.Decimal(10, 2)
+  numero_max_ingressos   Int
+  edicao                 Edicao            @relation(fields: [id_edicao], references: [id_edicao], onDelete: Cascade)
+  inscricoes             InscricaoEdicao[]
 
   @@map("lote_ingresso")
 }
 
 model Cupom {
-  id_cupom            Int                @id @default(autoincrement())
+  id_cupom            Int               @id @default(autoincrement())
   id_edicao           Int
-  codigo              String             @unique @db.VarChar(50)
+  codigo              String            @unique @db.VarChar(50)
   percentual_desconto Int
   limite_usos         Int
-  quantidade_uso      Int                @default(0)
+  quantidade_uso      Int               @default(0)
+  edicao              Edicao            @relation(fields: [id_edicao], references: [id_edicao], onDelete: Cascade)
   inscricoes          InscricaoEdicao[]
 
   @@map("cupom")
 }
 
 model InscricaoEdicao {
-  id_inscricao_edicao  Int                @id @default(autoincrement())
+  id_inscricao_edicao  Int                  @id @default(autoincrement())
   id_participante      Int
   id_cupom             Int?
   id_lote              Int
-  status               String             @default("Pendente") @db.VarChar(100)
-  url_qrcode           String?            @db.Text
-  participante         PerfilParticipante @relation(fields: [id_participante], references: [id_participante])
-  lote                 LoteIngresso       @relation(fields: [id_lote], references: [id_lote])
-  cupom                Cupom?             @relation(fields: [id_cupom], references: [id_cupom])
+  status               String               @default("Pendente") @db.VarChar(100)
+  url_qrcode           String?              @db.Text
+  participante         PerfilParticipante   @relation(fields: [id_participante], references: [id_participante])
+  lote                 LoteIngresso         @relation(fields: [id_lote], references: [id_lote])
+  cupom                Cupom?               @relation(fields: [id_cupom], references: [id_cupom])
   pagamentos           Pagamento[]
   inscricoesAtividades InscricaoAtividade[]
 
@@ -244,40 +260,45 @@ model Pagamento {
 }
 
 model Atividade {
-  id_atividade                Int                  @id @default(autoincrement())
+  id_atividade                Int                    @id @default(autoincrement())
   id_edicao                   Int
-  titulo                      String               @db.VarChar(255)
-  tipo_atividade              String?              @db.VarChar(100)
-  descricao                   String?              @db.Text
+  titulo                      String                 @db.VarChar(255)
+  tipo_atividade              String?                @db.VarChar(100)
+  descricao                   String?                @db.Text
   carga_horario               Int
-  data_abertura_atividade     DateTime?            @db.Timestamp
-  data_encerramento_atividade DateTime?            @db.Timestamp
+  data_abertura_atividade     DateTime?              @db.Timestamp
+  data_encerramento_atividade DateTime?              @db.Timestamp
+  edicao                      Edicao                 @relation(fields: [id_edicao], references: [id_edicao], onDelete: Cascade)
   reservas                    Reserva[]
   inscricoesAtividades        InscricaoAtividade[]
   presencas                   Presenca[]
   atividadesMinistrantes      AtividadeMinistrante[]
+  certificados                Certificado[]
+  materiaisDigitais           MaterialDigital[]
+  comunicados                 Comunicado[]
 
   @@map("atividade")
 }
 
 model EspacoFisico {
-  id_espaco                     Int       @id @default(autoincrement())
-  id_edicao                     Int
-  tipo_espaco                   String?   @db.VarChar(100)
-  descricao_local               String?   @db.Text
-  instituicao                   String?   @db.VarChar(255)
-  nome_sala                     String?   @db.VarChar(150)
-  capacidade_max                Int
+  id_espaco                      Int       @id @default(autoincrement())
+  id_edicao                      Int
+  tipo_espaco                    String?   @db.VarChar(100)
+  descricao_local                String?   @db.Text
+  instituicao                    String?   @db.VarChar(255)
+  nome_sala                      String?   @db.VarChar(150)
+  capacidade_max                 Int
   descricao_recursos_disponiveis String?   @db.Text
-  reservas                      Reserva[]
+  edicao                         Edicao    @relation(fields: [id_edicao], references: [id_edicao], onDelete: Cascade)
+  reservas                       Reserva[]
 
   @@map("espaco_fisico")
 }
 
 model Reserva {
   id_reserva   Int          @id @default(autoincrement())
-  id_atividade Int          @db.Integer
-  id_espaco    Int          @db.Integer
+  id_atividade Int
+  id_espaco    Int
   data_inicio  DateTime?    @db.Timestamp
   data_final   DateTime?    @db.Timestamp
   atividade    Atividade    @relation(fields: [id_atividade], references: [id_atividade], onDelete: Cascade)
@@ -294,6 +315,7 @@ model ItemInventarioFisico {
   quantidade_disponivel Int
   quantidade_minima     Int
   descricao             String?              @db.Text
+  edicao                Edicao               @relation(fields: [id_edicao], references: [id_edicao], onDelete: Cascade)
   registros             RegistroInventario[]
 
   @@map("item_inventario_fisico")
@@ -309,6 +331,7 @@ model RegistroInventario {
   status              String?              @db.VarChar(100)
   quantidade_retirada Int
   item                ItemInventarioFisico @relation(fields: [id_item], references: [id_item])
+  organizador         PerfilOrganizador    @relation(fields: [id_organizador], references: [id_organizador])
   ministrante         PerfilMinistrante?   @relation(fields: [id_ministrante], references: [id_ministrante])
 
   @@map("registro_inventario")
@@ -348,6 +371,8 @@ model Certificado {
   codigo_autenticidade   String?    @unique @db.VarChar(100)
   carga_horaria_impressa String?    @db.VarChar(50)
   usuario                Usuario    @relation(fields: [id_usuario], references: [id_usuario])
+  edicao                 Edicao     @relation(fields: [id_edicao], references: [id_edicao], onDelete: Cascade)
+  atividade              Atividade? @relation(fields: [id_atividade], references: [id_atividade], onDelete: SetNull)
 
   @@map("certificado")
 }
@@ -362,23 +387,72 @@ model AtividadeMinistrante {
   @@map("atividade_ministrante")
 }
 
+model MaterialDigital {
+  id_material  Int       @id @default(autoincrement())
+  id_atividade Int
+  titulo       String?   @db.VarChar(255)
+  url_pdf      String?   @db.Text
+  data         DateTime? @db.Timestamp
+  status       String?   @db.VarChar(100)
+  atividade    Atividade @relation(fields: [id_atividade], references: [id_atividade], onDelete: Cascade)
+
+  @@map("material_digital")
+}
+
+model Comunicado {
+  id_comunicado Int        @id @default(autoincrement())
+  id_edicao     Int
+  id_atividade  Int?
+  titulo        String     @db.VarChar(255)
+  conteudo      String     @db.Text
+  data_envio    DateTime?  @default(now()) @db.Timestamp
+  perfil_alvo   String?    @db.VarChar(100)
+  edicao        Edicao     @relation(fields: [id_edicao], references: [id_edicao], onDelete: Cascade)
+  atividade     Atividade? @relation(fields: [id_atividade], references: [id_atividade], onDelete: SetNull)
+
+  @@map("comunicado")
+}
+
+model MidiaEvento {
+  id_material  Int     @id @default(autoincrement())
+  id_edicao    Int
+  url_material String  @db.Text
+  descricao    String? @db.Text
+  edicao       Edicao  @relation(fields: [id_edicao], references: [id_edicao], onDelete: Cascade)
+
+  @@map("midia_evento")
+}
+
+model Patrocinador {
+  id_patrocinador Int     @id @default(autoincrement())
+  id_edicao       Int
+  razao_social    String  @db.VarChar(255)
+  url_logo        String? @db.Text
+  descricao       String? @db.Text
+  nivel           Int?
+  edicao          Edicao  @relation(fields: [id_edicao], references: [id_edicao], onDelete: Cascade)
+
+  @@map("patrocinador")
+}
+
 model Anais {
   id_anais        Int                 @id @default(autoincrement())
   id_edicao       Int
   data_lancamento DateTime?           @db.Timestamp
+  edicao          Edicao              @relation(fields: [id_edicao], references: [id_edicao], onDelete: Cascade)
   trabalhos       TrabalhoAcademico[]
 
   @@map("anais")
 }
 
 model TrabalhoAcademico {
-  id_trabalho           Int               @id @default(autoincrement())
+  id_trabalho           Int         @id @default(autoincrement())
   id_anais              Int?
-  titulo                String            @db.VarChar(255)
-  area_tematica         String?           @db.VarChar(150)
-  url_arquivo_pdf       String?           @db.Text
+  titulo                String      @db.VarChar(255)
+  area_tematica         String?     @db.VarChar(150)
+  url_arquivo_pdf       String?     @db.Text
   numero_apresentadores Int?
-  anais                 Anais?            @relation(fields: [id_anais], references: [id_anais])
+  anais                 Anais?      @relation(fields: [id_anais], references: [id_anais])
   submissoes            Submissao[]
   avaliacoes            Avaliacao[]
 
@@ -418,4 +492,38 @@ model Correcao {
   avaliacao      Avaliacao         @relation(fields: [id_avaliacao], references: [id_avaliacao], onDelete: Cascade)
 
   @@map("correcao")
+}
+
+model ModeloTrabalhoCientifico {
+  id_modelo             Int     @id @default(autoincrement())
+  id_edicao             Int
+  url_modelo_template   String  @db.Text
+  numero_apresentadores Int?
+  edicao                Edicao  @relation(fields: [id_edicao], references: [id_edicao], onDelete: Cascade)
+
+  @@map("modelo_trabalho_cientifico")
+}
+
+model ModeloCertificado {
+  id_modelo             Int     @id @default(autoincrement())
+  id_edicao             Int
+  titulo                String? @db.VarChar(255)
+  url_fundo_template    String? @db.Text
+  texto_institucional   String? @db.Text
+  url_assinatura        String? @db.Text
+  carga_horaria_minima  Int?
+  edicao                Edicao  @relation(fields: [id_edicao], references: [id_edicao], onDelete: Cascade)
+
+  @@map("modelo_certificado")
+}
+
+model Signatario {
+  id_signatario         Int     @id @default(autoincrement())
+  id_edicao             Int
+  nome                  String  @db.VarChar(255)
+  cargo                 String? @db.VarChar(150)
+  url_imagem_assinatura String? @db.Text
+  edicao                Edicao  @relation(fields: [id_edicao], references: [id_edicao], onDelete: Cascade)
+
+  @@map("signatario")
 }

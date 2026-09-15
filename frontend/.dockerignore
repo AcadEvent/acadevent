@@ -1,10 +1,2 @@
 node_modules
 .next
-out
-coverage
-.git
-.gitignore
-.env
-.env.*
-*.md
-Dockerfile.dev

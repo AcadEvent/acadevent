@@ -1,10 +1,10 @@
 import {
   BadRequestException,
-  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { spReservarEspaco } from '../prisma/procedures';
 import { CriarEspacoDto } from './dto/criar-espaco.dto';
 import { ReservarEspacoDto } from './dto/reservar-espaco.dto';
 
@@ -64,28 +64,14 @@ export class EspacosService {
       throw new NotFoundException('Atividade nao encontrada.');
     }
 
-    const reservasExistentes = await this.prisma.reserva.findMany({
-      where: { id_espaco: dto.id_espaco },
-    });
-
-    for (const r of reservasExistentes) {
-      if (r.data_inicio && r.data_final) {
-        if (dto.data_inicio < r.data_final && dto.data_final > r.data_inicio) {
-          throw new ConflictException(
-            'Conflito de agendamento detectado: o espaco fisico ja possui uma reserva no intervalo informado.',
-          );
-        }
-      }
-    }
-
-    return this.prisma.reserva.create({
-      data: {
+    return this.prisma.$transaction(async (tx) =>
+      spReservarEspaco(tx, {
         id_atividade: dto.id_atividade,
         id_espaco: dto.id_espaco,
         data_inicio: dto.data_inicio,
         data_final: dto.data_final,
-      },
-    });
+      }),
+    );
   }
 
   async obterMapaOcupacao(idEdicao: number) {

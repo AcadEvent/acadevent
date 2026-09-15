@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { spRetirarInventario } from '../prisma/procedures';
 import { CriarItemInventarioDto } from './dto/criar-item-inventario.dto';
 import { RetirarItemDto } from './dto/retirar-item.dto';
 
@@ -48,12 +49,6 @@ export class InventarioService {
       throw new NotFoundException('Item de inventario nao encontrado.');
     }
 
-    if (dto.quantidade_retirada > item.quantidade_disponivel) {
-      throw new BadRequestException(
-        `Quantidade solicitada (${dto.quantidade_retirada}) e superior a quantidade disponivel em estoque (${item.quantidade_disponivel}).`,
-      );
-    }
-
     const organizador = await this.prisma.perfilOrganizador.findUnique({
       where: { id_organizador: dto.id_organizador },
     });
@@ -72,22 +67,15 @@ export class InventarioService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      const itemAtualizado = await tx.itemInventarioFisico.update({
-        where: { id_item: dto.id_item },
-        data: {
-          quantidade_disponivel: { decrement: dto.quantidade_retirada },
-        },
+      const registro = await spRetirarInventario(tx, {
+        id_item: dto.id_item,
+        id_organizador: dto.id_organizador,
+        quantidade: dto.quantidade_retirada,
+        id_ministrante: dto.id_ministrante || null,
       });
 
-      const registro = await tx.registroInventario.create({
-        data: {
-          id_item: dto.id_item,
-          id_organizador: dto.id_organizador,
-          id_ministrante: dto.id_ministrante || null,
-          data_retirada: new Date(),
-          status: 'Retirado',
-          quantidade_retirada: dto.quantidade_retirada,
-        },
+      const itemAtualizado = await tx.itemInventarioFisico.findUnique({
+        where: { id_item: dto.id_item },
       });
 
       return {

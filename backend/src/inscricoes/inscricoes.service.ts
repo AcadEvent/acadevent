@@ -7,6 +7,7 @@ import {
 import { Prisma, Cupom } from '@prisma/client';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { spRealizarInscricaoEdicao } from '../prisma/procedures';
 import { CriarInscricaoDto } from './dto/criar-inscricao.dto';
 import { CriarLoteDto } from './dto/criar-lote.dto';
 import { CriarCupomDto } from './dto/criar-cupom.dto';
@@ -103,19 +104,6 @@ export class InscricoesService {
       );
     }
 
-    const inscricoesAtivas = await this.prisma.inscricaoEdicao.count({
-      where: {
-        id_lote: dto.id_lote,
-        status: { not: 'Cancelada' },
-      },
-    });
-
-    if (inscricoesAtivas >= lote.numero_max_ingressos) {
-      throw new BadRequestException(
-        'Limite maximo de ingressos deste lote atingido.',
-      );
-    }
-
     const perfilParticipante = await this.prisma.perfilParticipante.findUnique({
       where: { id_usuario: usuarioId },
     });
@@ -137,11 +125,6 @@ export class InscricoesService {
       if (!cupom) {
         throw new NotFoundException('Cupom invalido ou nao encontrado.');
       }
-      if (cupom.quantidade_uso >= cupom.limite_usos) {
-        throw new BadRequestException(
-          'O limite de usos deste cupom foi atingido.',
-        );
-      }
 
       const percentualDecimal = new Prisma.Decimal(
         cupom.percentual_desconto,
@@ -151,20 +134,10 @@ export class InscricoesService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      if (cupom) {
-        await tx.cupom.update({
-          where: { id_cupom: cupom.id_cupom },
-          data: { quantidade_uso: { increment: 1 } },
-        });
-      }
-
-      const inscricao = await tx.inscricaoEdicao.create({
-        data: {
-          id_participante: perfilParticipante.id_participante,
-          id_lote: lote.id_lote,
-          id_cupom: cupom ? cupom.id_cupom : null,
-          status: 'Pendente',
-        },
+      const inscricao = await spRealizarInscricaoEdicao(tx, {
+        id_participante: perfilParticipante.id_participante,
+        id_lote: lote.id_lote,
+        id_cupom: cupom ? cupom.id_cupom : null,
       });
 
       const pagamento = await tx.pagamento.create({
