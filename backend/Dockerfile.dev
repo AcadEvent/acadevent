@@ -11,6 +11,10 @@ RUN npm install
 # Copia o restante do código da aplicação
 COPY . .
 
+# prisma.config.ts throws if DATABASE_URL is unset; generate does not connect.
+ARG DATABASE_URL=postgresql://build:build@127.0.0.1:5432/build?schema=public
+ENV DATABASE_URL=$DATABASE_URL
+
 # Gera o Prisma Client nativamente dentro do ambiente Linux do container
 RUN npx prisma generate
 
