@@ -7,6 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 interface MockPrismaService {
   edicao: { findUnique: jest.Mock };
   usuario: { findUnique: jest.Mock };
+  certificado: { findUnique: jest.Mock };
   $queryRaw: jest.Mock;
   $transaction: jest.Mock;
 }
@@ -19,6 +20,7 @@ describe('CertificadosService', () => {
     prisma = {
       edicao: { findUnique: jest.fn() },
       usuario: { findUnique: jest.fn() },
+      certificado: { findUnique: jest.fn() },
       $queryRaw: jest.fn().mockResolvedValue([
         { id_certificado: 1, codigo_autenticidade: 'AUTH-A7B8-C9D0' },
       ]),
@@ -50,7 +52,7 @@ describe('CertificadosService', () => {
       codigo_autenticidade: 'AUTH-A7B8-C9D0',
     };
 
-    it('deve lançar NotFoundException se a edicao nao existir', async () => {
+    it('deve lancar NotFoundException se a edicao nao existir', async () => {
       prisma.edicao.findUnique.mockResolvedValue(null);
       await expect(service.emitirCertificadoAtividade(dto)).rejects.toThrow(
         NotFoundException,
@@ -66,6 +68,45 @@ describe('CertificadosService', () => {
         expect.objectContaining({ codigo_autenticidade: 'AUTH-A7B8-C9D0' }),
       );
       expect(prisma.$queryRaw).toHaveBeenCalled();
+    });
+  });
+
+  describe('validarCertificado', () => {
+    it('deve lancar NotFoundException se certificado nao for encontrado', async () => {
+      prisma.certificado.findUnique.mockResolvedValue(null);
+      await expect(service.validarCertificado('INVALIDO')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('deve retornar informacoes do certificado valido', async () => {
+      prisma.certificado.findUnique.mockResolvedValue({
+        id_certificado: 1,
+        codigo_autenticidade: 'AUTH-VALIDO',
+        usuario: { nome: 'Aluno Teste', email: 'aluno@teste.com' },
+        edicao: { titulo_oficial: 'Congresso 2026' },
+      });
+
+      const res = await service.validarCertificado('AUTH-VALIDO');
+      expect(res.valido).toBe(true);
+      expect(res.certificado.codigo_autenticidade).toBe('AUTH-VALIDO');
+    });
+  });
+
+  describe('gerarPdfCertificado', () => {
+    it('deve gerar buffer de PDF para certificado valido', async () => {
+      prisma.certificado.findUnique.mockResolvedValue({
+        id_certificado: 1,
+        codigo_autenticidade: 'AUTH-VALIDO',
+        nome_atividade: 'Palestra de Abertura',
+        carga_horaria_impressa: '4',
+        usuario: { nome: 'Aluno Teste', email: 'aluno@teste.com' },
+        edicao: { titulo_oficial: 'Congresso 2026' },
+      });
+
+      const buffer = await service.gerarPdfCertificado('AUTH-VALIDO');
+      expect(buffer).toBeInstanceOf(Buffer);
+      expect(buffer.length).toBeGreaterThan(0);
     });
   });
 });
