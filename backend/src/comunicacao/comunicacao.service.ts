@@ -27,8 +27,8 @@ export class ComunicacaoService {
       },
     });
 
-    // Envio assincrono de e-mails / notificacoes em lote
-    this.processarEnvioAssincrono(comunicado.id_comunicado, dto);
+    // Envio de e-mails / notificacoes em lote
+    await this.processarEnvioAssincrono(comunicado.id_comunicado, dto);
 
     return comunicado;
   }
@@ -38,11 +38,34 @@ export class ComunicacaoService {
     dto: EnviarComunicadoDto,
   ) {
     try {
+      const whereClause: Record<string, any> = {
+        lote: { id_edicao: dto.id_edicao },
+        status: { not: 'Cancelada' },
+      };
+
+      if (dto.id_atividade) {
+        whereClause.inscricoesAtividades = {
+          some: { id_atividade: dto.id_atividade },
+        };
+      }
+
+      if (dto.perfil_alvo && dto.perfil_alvo.toLowerCase() !== 'todos') {
+        whereClause.participante = {
+          usuario: {
+            perfis: {
+              some: {
+                tipo_perfil: {
+                  equals: dto.perfil_alvo,
+                  mode: 'insensitive',
+                },
+              },
+            },
+          },
+        };
+      }
+
       const inscricoes = await this.prisma.inscricaoEdicao.findMany({
-        where: {
-          lote: { id_edicao: dto.id_edicao },
-          status: { not: 'Cancelada' },
-        },
+        where: whereClause,
         include: {
           participante: {
             include: { usuario: true },
@@ -50,20 +73,30 @@ export class ComunicacaoService {
         },
       });
 
-      for (const inscricao of inscricoes) {
-        const usuario = inscricao.participante?.usuario;
-        if (usuario) {
-          await this.prisma.notificacao.create({
-            data: {
-              id_usuario: usuario.id_usuario,
-              titulo: dto.titulo,
-              mensagem: dto.conteudo,
-            },
-          });
+      const idsUsuarios = Array.from(
+        new Set(
+          inscricoes
+            .map((i) => i.participante?.usuario?.id_usuario)
+            .filter((id): id is number => typeof id === 'number'),
+        ),
+      );
 
-          this.logger.log(
-            `E-mail transacional disparado para: ${usuario.email} | Assunto: ${dto.titulo}`,
-          );
+      if (idsUsuarios.length > 0) {
+        await this.prisma.notificacao.createMany({
+          data: idsUsuarios.map((id_usuario) => ({
+            id_usuario,
+            titulo: dto.titulo,
+            mensagem: dto.conteudo,
+          })),
+        });
+
+        for (const inscricao of inscricoes) {
+          const usuario = inscricao.participante?.usuario;
+          if (usuario?.email) {
+            this.logger.log(
+              `E-mail transacional disparado para: ${usuario.email} | Assunto: ${dto.titulo}`,
+            );
+          }
         }
       }
     } catch (err) {

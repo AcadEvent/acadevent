@@ -7,10 +7,75 @@ import { Prisma } from '@prisma/client';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfirmarPagamentoManualDto } from './dto/confirmar-pagamento-manual.dto';
+import { WebhookPagamentoDto } from './dto/webhook-pagamento.dto';
 
 @Injectable()
 export class PagamentosService {
   constructor(private readonly prisma: PrismaService) {}
+
+  async processarWebhook(dto: WebhookPagamentoDto) {
+    const pagamento = await this.prisma.pagamento.findFirst({
+      where: { gateway_id: dto.gateway_id },
+      include: { inscricao: true },
+    });
+
+    if (!pagamento) {
+      throw new NotFoundException(
+        'Transacao nao encontrada pelo gateway_id fornecido.',
+      );
+    }
+
+    // Idempotência: se pagamento já for 'Aprovado', retorna sem alterar url_qrcode
+    if (pagamento.status === 'Aprovado') {
+      return {
+        pagamento,
+        inscricao: pagamento.inscricao,
+      };
+    }
+
+    if (dto.status === 'Aprovado') {
+      const hash = crypto.randomBytes(16).toString('hex');
+
+      return this.prisma.$transaction(async (tx) => {
+        const pagAtualizado = await tx.pagamento.update({
+          where: { id_pagamento: pagamento.id_pagamento },
+          data: { status: 'Aprovado', data_pagamento: new Date() },
+        });
+
+        const inscricaoAtualizada = await tx.inscricaoEdicao.update({
+          where: { id_inscricao_edicao: pagamento.id_inscricao_edicao },
+          data: {
+            status: 'Confirmada',
+            url_qrcode: hash,
+          },
+        });
+
+        return { pagamento: pagAtualizado, inscricao: inscricaoAtualizada };
+      });
+    }
+
+    if (dto.status !== 'Cancelado' && dto.status !== 'Estornado') {
+      return this.prisma.pagamento.update({
+        where: { id_pagamento: pagamento.id_pagamento },
+        data: { status: dto.status },
+      });
+    }
+
+    const novoStatusInscricao =
+      dto.status === 'Cancelado' ? 'Cancelada' : 'Estornada';
+
+    return this.prisma.$transaction(async (tx) => {
+      const pagAtualizado = await tx.pagamento.update({
+        where: { id_pagamento: pagamento.id_pagamento },
+        data: { status: dto.status },
+      });
+      const inscricaoAtualizada = await tx.inscricaoEdicao.update({
+        where: { id_inscricao_edicao: pagamento.id_inscricao_edicao },
+        data: { status: novoStatusInscricao },
+      });
+      return { pagamento: pagAtualizado, inscricao: inscricaoAtualizada };
+    });
+  }
 
   async confirmarManual(dto: ConfirmarPagamentoManualDto) {
     const inscricao = await this.prisma.inscricaoEdicao.findUnique({
@@ -23,7 +88,9 @@ export class PagamentosService {
     }
 
     if (inscricao.status === 'Confirmada') {
-      throw new BadRequestException('Esta inscricao ja se encontra confirmada.');
+      throw new BadRequestException(
+        'Esta inscricao ja se encontra confirmada.',
+      );
     }
 
     const hashQrCode = crypto.randomBytes(16).toString('hex');

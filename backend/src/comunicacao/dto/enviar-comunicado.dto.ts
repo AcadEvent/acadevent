@@ -12,17 +12,26 @@ export class EnviarComunicadoDto {
   @IsOptional()
   id_atividade?: number;
 
-  @ApiProperty({ example: 'Mudanca de Sala - Palestra Magna', description: 'Titulo do comunicado' })
+  @ApiProperty({
+    example: 'Mudanca de Sala - Palestra Magna',
+    description: 'Titulo do comunicado',
+  })
   @IsString()
   @IsNotEmpty({ message: 'O titulo e obrigatorio.' })
   titulo: string;
 
-  @ApiProperty({ example: 'Informamos que a palestra ocorrera no Auditorio B.', description: 'Conteudo do comunicado' })
+  @ApiProperty({
+    example: 'Informamos que a palestra ocorrera no Auditorio B.',
+    description: 'Conteudo do comunicado',
+  })
   @IsString()
   @IsNotEmpty({ message: 'O conteudo e obrigatorio.' })
   conteudo: string;
 
-  @ApiPropertyOptional({ example: 'participante', description: 'Segmentacao por perfil ou todos' })
+  @ApiPropertyOptional({
+    example: 'participante',
+    description: 'Segmentacao por perfil ou todos',
+  })
   @IsString()
   @IsOptional()
   perfil_alvo?: string;

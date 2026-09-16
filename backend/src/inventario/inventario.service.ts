@@ -54,7 +54,9 @@ export class InventarioService {
     });
 
     if (!organizador) {
-      throw new NotFoundException('Perfil de organizador responsavel nao encontrado.');
+      throw new NotFoundException(
+        'Perfil de organizador responsavel nao encontrado.',
+      );
     }
 
     if (dto.id_ministrante) {
@@ -101,19 +103,32 @@ export class InventarioService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      const registroAtualizado = await tx.registroInventario.update({
-        where: { id_registro_item: idRegistroItem },
+      const atualizados = await tx.registroInventario.updateMany({
+        where: {
+          id_registro_item: idRegistroItem,
+          status: 'Retirado',
+        },
         data: {
           data_entrega: new Date(),
           status: 'Devolvido',
         },
       });
 
+      if (atualizados.count === 0) {
+        throw new BadRequestException(
+          'Este item ja consta como devolvido no sistema.',
+        );
+      }
+
       const itemAtualizado = await tx.itemInventarioFisico.update({
         where: { id_item: registro.id_item },
         data: {
           quantidade_disponivel: { increment: registro.quantidade_retirada },
         },
+      });
+
+      const registroAtualizado = await tx.registroInventario.findUnique({
+        where: { id_registro_item: idRegistroItem },
       });
 
       return {

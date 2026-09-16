@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { spRegistrarAvaliacaoTrabalho } from '../prisma/procedures';
@@ -11,6 +15,13 @@ export class SubmissoesService {
   async registrarAvaliacao(dto: RegistrarAvaliacaoDto) {
     const trabalho = await this.prisma.trabalhoAcademico.findUnique({
       where: { id_trabalho: dto.id_trabalho },
+      include: {
+        submissoes: {
+          include: {
+            autor: true,
+          },
+        },
+      },
     });
 
     if (!trabalho) {
@@ -23,6 +34,19 @@ export class SubmissoesService {
 
     if (!parecerista) {
       throw new NotFoundException('Perfil de parecerista nao encontrado.');
+    }
+
+    const ehAutor = trabalho.submissoes?.some((submissao) => {
+      if (submissao.autor && parecerista.id_usuario) {
+        return submissao.autor.id_usuario === parecerista.id_usuario;
+      }
+      return submissao.id_autor === dto.id_parecerista;
+    });
+
+    if (ehAutor) {
+      throw new ForbiddenException(
+        'Conflito de interesses: o autor nao pode avaliar o proprio trabalho.',
+      );
     }
 
     return this.prisma.$transaction(async (tx) =>
