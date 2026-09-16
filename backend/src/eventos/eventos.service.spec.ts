@@ -1,4 +1,9 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return */
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { EventosService } from './eventos.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -74,6 +79,25 @@ describe('EventosService', () => {
         NotFoundException,
       );
     });
+
+    it('nao deve incluir cupons na consulta nem retornar cupons na resposta publica', async () => {
+      mockPrismaService.edicao.findFirst.mockImplementation((args) => {
+        expect(args?.include?.cupons).toBeUndefined();
+        return Promise.resolve({
+          id_edicao: 1,
+          sigla: 'secint2026',
+          titulo_oficial: 'Semana de TI',
+          evento: {},
+          lotes: [],
+          espacos: [],
+          atividades: [],
+        });
+      });
+
+      const resultado = await service.buscarPorSlug('secint2026');
+      expect(resultado).toBeDefined();
+      expect(resultado).not.toHaveProperty('cupons');
+    });
   });
 
   describe('criarEvento', () => {
@@ -115,6 +139,134 @@ describe('EventosService', () => {
 
       expect(resultado).toBeDefined();
       expect(resultado.edicao.sigla).toBe('tech2026');
+    });
+  });
+
+  describe('atualizarStatus', () => {
+    const edicaoExistente = {
+      id_edicao: 1,
+      status_evento: 'Publicado',
+      evento: {
+        id_evento: 10,
+        id_organizador: 5,
+        organizador: {
+          id_organizador: 5,
+          id_usuario: 1,
+        },
+      },
+    };
+
+    it('deve lancar ForbiddenException se usuario nao for organizador do evento nem admin (IDOR)', async () => {
+      mockPrismaService.edicao.findUnique.mockResolvedValue(edicaoExistente);
+      mockPrismaService.perfilOrganizador.findUnique.mockResolvedValue({
+        id_organizador: 99,
+        id_usuario: 2,
+      });
+
+      const usuarioNaoAutorizado = {
+        id_usuario: 2,
+        perfis: ['participante'],
+      };
+
+      await expect(
+        service.atualizarStatus(
+          1,
+          { status: 'Encerrado' },
+          usuarioNaoAutorizado,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('deve permitir atualizarStatus se usuario for admin', async () => {
+      mockPrismaService.edicao.findUnique.mockResolvedValue(edicaoExistente);
+      mockPrismaService.edicao.update.mockResolvedValue({
+        ...edicaoExistente,
+        status_evento: 'Encerrado',
+      });
+
+      const usuarioAdmin = {
+        id_usuario: 999,
+        perfis: ['administrador'],
+      };
+
+      const resultado = await service.atualizarStatus(
+        1,
+        { status: 'Encerrado' },
+        usuarioAdmin,
+      );
+
+      expect(resultado.status_evento).toBe('Encerrado');
+    });
+
+    it('deve permitir atualizarStatus se usuario for o organizador do evento', async () => {
+      mockPrismaService.edicao.findUnique.mockResolvedValue(edicaoExistente);
+      mockPrismaService.edicao.update.mockResolvedValue({
+        ...edicaoExistente,
+        status_evento: 'Em andamento',
+      });
+
+      const usuarioOrganizador = {
+        id_usuario: 1,
+        perfis: ['organizador'],
+      };
+
+      const resultado = await service.atualizarStatus(
+        1,
+        { status: 'Em andamento' },
+        usuarioOrganizador,
+      );
+
+      expect(resultado.status_evento).toBe('Em andamento');
+    });
+
+    it('deve lancar BadRequestException em transicao invalida de Encerrado para Publicado', async () => {
+      const edicaoEncerrada = {
+        id_edicao: 1,
+        status_evento: 'Encerrado',
+        evento: {
+          id_evento: 10,
+          id_organizador: 5,
+          organizador: {
+            id_organizador: 5,
+            id_usuario: 1,
+          },
+        },
+      };
+      mockPrismaService.edicao.findUnique.mockResolvedValue(edicaoEncerrada);
+
+      const usuarioOrganizador = {
+        id_usuario: 1,
+        perfis: ['organizador'],
+      };
+
+      await expect(
+        service.atualizarStatus(1, { status: 'Publicado' }, usuarioOrganizador),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('deve lancar BadRequestException em transicao invalida de Encerrado para Rascunho', async () => {
+      const edicaoEncerrada = {
+        id_edicao: 1,
+        status_evento: 'Encerrado',
+        evento: {
+          id_evento: 10,
+          id_organizador: 5,
+          organizador: {
+            id_organizador: 5,
+            id_usuario: 1,
+          },
+        },
+      };
+      mockPrismaService.edicao.findUnique.mockResolvedValue(edicaoEncerrada);
+
+      const usuarioOrganizador = {
+        id_usuario: 1,
+        perfis: ['organizador'],
+      };
+
+      await expect(
+        service.atualizarStatus(1, { status: 'Rascunho' }, usuarioOrganizador),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });

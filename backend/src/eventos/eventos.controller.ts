@@ -13,6 +13,7 @@ import { EventosService } from './eventos.service';
 import { CriarEventoDto } from './dto/criar-evento.dto';
 import { AtualizarStatusDto } from './dto/atualizar-status.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { UsuarioAutenticadoRequest } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('eventos')
@@ -20,21 +21,27 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 export class EventosController {
   constructor(private readonly eventosService: EventosService) {}
 
-  @ApiOperation({ summary: 'Listar eventos públicos publicados (RF01.5 / RF14)' })
+  @ApiOperation({
+    summary: 'Listar eventos públicos publicados (RF01.5 / RF14)',
+  })
   @Get()
   listarPublicos() {
     return this.eventosService.listarPublicos();
   }
 
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Listar eventos gerenciados pelo organizador autenticado' })
+  @ApiOperation({
+    summary: 'Listar eventos gerenciados pelo organizador autenticado',
+  })
   @UseGuards(JwtAuthGuard)
   @Get('gerenciar/meus')
   listarMeusEventos(@CurrentUser() usuario: { id_usuario: number }) {
     return this.eventosService.listarPorOrganizador(usuario.id_usuario);
   }
 
-  @ApiOperation({ summary: 'Buscar detalhes do evento pelo slug ou id (RF01.5)' })
+  @ApiOperation({
+    summary: 'Buscar detalhes do evento pelo slug ou id (RF01.5)',
+  })
   @Get(':slug')
   buscarPorSlug(@Param('slug') slug: string) {
     return this.eventosService.buscarPorSlug(slug);
@@ -58,7 +65,8 @@ export class EventosController {
   atualizarStatus(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: AtualizarStatusDto,
+    @CurrentUser() usuario: UsuarioAutenticadoRequest,
   ) {
-    return this.eventosService.atualizarStatus(id, dto);
+    return this.eventosService.atualizarStatus(id, dto, usuario);
   }
 }

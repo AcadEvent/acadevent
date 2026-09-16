@@ -9,8 +9,18 @@ export class AtualizarStatusDto {
   })
   @IsString()
   @IsNotEmpty({ message: 'O status e obrigatorio.' })
-  @IsIn(['Rascunho', 'Publicado', 'Em andamento', 'Encerrado', 'Arquivado', 'Ativo'], {
-    message: 'Status do evento invalido.',
-  })
+  @IsIn(
+    [
+      'Rascunho',
+      'Publicado',
+      'Em andamento',
+      'Encerrado',
+      'Arquivado',
+      'Ativo',
+    ],
+    {
+      message: 'Status do evento invalido.',
+    },
+  )
   status: string;
 }
