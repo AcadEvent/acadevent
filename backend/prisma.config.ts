@@ -3,7 +3,7 @@
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = process.env.DATABASE_URL || "postgresql://acadevent_admin:acadevent_local_pwd@postgres:5432/acadevent_db?schema=public";
 if (!databaseUrl) {
   throw new Error("DATABASE_URL is not set");
 }

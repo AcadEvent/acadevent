@@ -38,3 +38,10 @@ pgdata/
 # Arquivos do sistema operacional
 .DS_Store
 Thumbs.db
+
+# agents
+AGENTS.md
+.agents/
+skills-lock.json
+CLAUDE.md
+GEMINI.md
