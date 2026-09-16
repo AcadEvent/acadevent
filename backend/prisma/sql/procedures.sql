@@ -65,6 +65,8 @@ AS $$
 DECLARE
     v_conflitos INTEGER;
 BEGIN
+    PERFORM 1 FROM espaco_fisico WHERE id_espaco = p_id_espaco FOR UPDATE;
+
     SELECT COUNT(*) INTO v_conflitos
     FROM reserva
     WHERE id_espaco = p_id_espaco
@@ -207,8 +209,9 @@ AS $$
 DECLARE
     v_status_presenca VARCHAR(50);
     v_nome_atividade VARCHAR(255);
+    v_carga_horaria INTEGER;
 BEGIN
-    SELECT titulo INTO v_nome_atividade
+    SELECT titulo, carga_horario INTO v_nome_atividade, v_carga_horaria
     FROM atividade
     WHERE id_atividade = p_id_atividade;
 
@@ -236,7 +239,8 @@ BEGIN
         id_usuario,
         tipo_participacao,
         nome_atividade,
-        codigo_autenticidade
+        codigo_autenticidade,
+        carga_horaria_impressa
     )
     VALUES (
         p_id_edicao,
@@ -244,7 +248,8 @@ BEGIN
         p_id_usuario,
         'Participante',
         v_nome_atividade,
-        p_codigo_autenticidade
+        p_codigo_autenticidade,
+        COALESCE(v_carga_horaria::text, '4')
     )
     RETURNING *;
 END;
