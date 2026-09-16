@@ -1,4 +1,4 @@
-import { IsInt, IsNotEmpty, IsString } from 'class-validator';
+import { IsInt } from 'class-validator';
 
 export class EmitirCertificadoAtividadeDto {
   @IsInt()
@@ -9,8 +9,4 @@ export class EmitirCertificadoAtividadeDto {
 
   @IsInt()
   id_usuario: number;
-
-  @IsString()
-  @IsNotEmpty()
-  codigo_autenticidade: string;
 }
