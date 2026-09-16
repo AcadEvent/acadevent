@@ -10,9 +10,17 @@ import { RolesGuard } from './guards/roles.guard';
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
-    JwtModule.register({
-      secret: process.env.JWT_SECRET || 'acadevent_jwt_secret_key_sbe_p3',
-      signOptions: { expiresIn: '7d' },
+    JwtModule.registerAsync({
+      useFactory: () => {
+        const secret = process.env.JWT_SECRET;
+        if (!secret) {
+          throw new Error('JWT_SECRET nao definido no ambiente.');
+        }
+        return {
+          secret,
+          signOptions: { expiresIn: '7d' },
+        };
+      },
     }),
   ],
   controllers: [AuthController],

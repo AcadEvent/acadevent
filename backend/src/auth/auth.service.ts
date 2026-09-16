@@ -5,6 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { CadastroDto } from './dto/cadastro.dto';
@@ -18,6 +19,13 @@ export class AuthService {
   ) {}
 
   async cadastrar(dto: CadastroDto) {
+    const nomeNormalizado = dto.nome?.trim();
+    if (!nomeNormalizado) {
+      throw new BadRequestException(
+        'O nome nao pode ser vazio ou conter apenas espacos.',
+      );
+    }
+
     const emailNormalizado = dto.email.trim().toLowerCase();
 
     const usuarioExistente = await this.prisma.usuario.findUnique({
@@ -25,56 +33,80 @@ export class AuthService {
     });
 
     if (usuarioExistente) {
-      throw new BadRequestException('Este email ja esta cadastrado no sistema.');
+      throw new BadRequestException(
+        'Este email ja esta cadastrado no sistema.',
+      );
     }
 
     const saltRounds = 10;
     const senhaHash = await bcrypt.hash(dto.senha, saltRounds);
 
-    const novoUsuario = await this.prisma.$transaction(async (tx) => {
-      const usuario = await tx.usuario.create({
-        data: {
-          nome: dto.nome.trim(),
-          email: emailNormalizado,
-          senha_hash: senhaHash,
-        },
+    try {
+      const novoUsuario = await this.prisma.$transaction(async (tx) => {
+        const usuario = await tx.usuario.create({
+          data: {
+            nome: nomeNormalizado,
+            email: emailNormalizado,
+            senha_hash: senhaHash,
+          },
+        });
+
+        await tx.perfilParticipante.create({
+          data: {
+            id_usuario: usuario.id_usuario,
+          },
+        });
+
+        await tx.perfilUsuario.create({
+          data: {
+            id_usuario: usuario.id_usuario,
+            tipo_perfil: 'participante',
+          },
+        });
+
+        return usuario;
       });
 
-      await tx.perfilParticipante.create({
-        data: {
-          id_usuario: usuario.id_usuario,
-        },
-      });
-
-      await tx.perfilUsuario.create({
-        data: {
-          id_usuario: usuario.id_usuario,
-          tipo_perfil: 'participante',
-        },
-      });
-
-      return usuario;
-    });
-
-    const perfis = ['participante'];
-    const payload = {
-      sub: novoUsuario.id_usuario,
-      email: novoUsuario.email,
-      nome: novoUsuario.nome,
-      perfis,
-    };
-
-    const token = this.jwtService.sign(payload);
-
-    return {
-      access_token: token,
-      usuario: {
-        id_usuario: novoUsuario.id_usuario,
-        nome: novoUsuario.nome,
+      const perfis = ['participante'];
+      const payload = {
+        sub: novoUsuario.id_usuario,
         email: novoUsuario.email,
+        nome: novoUsuario.nome,
         perfis,
-      },
-    };
+      };
+
+      const token = this.jwtService.sign(payload);
+
+      return {
+        access_token: token,
+        usuario: {
+          id_usuario: novoUsuario.id_usuario,
+          nome: novoUsuario.nome,
+          email: novoUsuario.email,
+          perfis,
+        },
+      };
+    } catch (error: unknown) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new BadRequestException(
+          'Este email ja esta cadastrado no sistema.',
+        );
+      }
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        error.code === 'P2002'
+      ) {
+        throw new BadRequestException(
+          'Este email ja esta cadastrado no sistema.',
+        );
+      }
+      throw error;
+    }
   }
 
   async login(dto: LoginDto) {

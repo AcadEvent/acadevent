@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return */
 import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
+import { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { AuthService } from './auth.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -28,6 +30,10 @@ describe('AuthService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockPrismaService.usuario.findUnique.mockReset();
+    mockPrismaService.usuario.create.mockReset();
+    mockPrismaService.perfilParticipante.create.mockReset();
+    mockPrismaService.perfilUsuario.create.mockReset();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -51,6 +57,33 @@ describe('AuthService', () => {
         service.cadastrar({
           nome: 'Teste',
           email: 'existente@teste.com',
+          senha: 'senha123',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('deve lancar BadRequestException amigavel quando ocorrer erro de unicidade P2002 no banco sob concorrencia', async () => {
+      mockPrismaService.usuario.findUnique.mockResolvedValue(null);
+      const p2002Error = new Prisma.PrismaClientKnownRequestError(
+        'Unique constraint failed on the fields: (`email`)',
+        { code: 'P2002', clientVersion: '7.0.0' },
+      );
+      mockPrismaService.usuario.create.mockRejectedValue(p2002Error);
+
+      await expect(
+        service.cadastrar({
+          nome: 'Usuario Concorrente',
+          email: 'concorrente@teste.com',
+          senha: 'senha123',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('deve rejeitar cadastro com BadRequestException se o nome contiver apenas espacos', async () => {
+      await expect(
+        service.cadastrar({
+          nome: '   ',
+          email: 'novo@teste.com',
           senha: 'senha123',
         }),
       ).rejects.toThrow(BadRequestException);
