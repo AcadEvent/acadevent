@@ -8,12 +8,18 @@ import {
   Post,
   Req,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
 import { AtividadesService } from './atividades.service';
 import { InscreverAtividadeDto } from './dto/inscrever-atividade.dto';
-import { RegistrarPresencaItemDto } from './dto/registrar-presenca.dto';
+import {
+  RegistrarPresencaDto,
+  RegistrarPresencaItemDto,
+} from './dto/registrar-presenca.dto';
 import { CriarAtividadeDto } from './dto/criar-atividade.dto';
 import { AssociarMinistranteDto } from './dto/associar-ministrante.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 interface RequestWithUser {
   user?: {
@@ -32,9 +38,7 @@ export class AtividadesController {
   }
 
   @Get('cronograma/edicao/:id_edicao')
-  async obterCronograma(
-    @Param('id_edicao', ParseIntPipe) idEdicao: number,
-  ) {
+  async obterCronograma(@Param('id_edicao', ParseIntPipe) idEdicao: number) {
     return this.atividadesService.obterCronogramaPorEdicao(idEdicao);
   }
 
@@ -61,14 +65,21 @@ export class AtividadesController {
     return this.atividadesService.inscrever(usuarioId, dto);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post('chamada')
   async chamada(
-    @Body() itens: RegistrarPresencaItemDto[],
+    @CurrentUser() usuario: { id_usuario: number },
+    @Body() body: RegistrarPresencaDto | RegistrarPresencaItemDto[],
     @Headers('x-usuario-id') usuarioIdHeader?: string,
     @Req() req?: RequestWithUser,
   ) {
-    const rawId = usuarioIdHeader || req?.user?.id_usuario || req?.user?.sub;
+    const rawId =
+      usuario?.id_usuario ||
+      usuarioIdHeader ||
+      req?.user?.id_usuario ||
+      req?.user?.sub;
     const usuarioId = rawId ? Number(rawId) : undefined;
+    const itens = Array.isArray(body) ? body : body?.presencas;
 
     return this.atividadesService.registrarChamada(itens, usuarioId);
   }

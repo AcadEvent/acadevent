@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Prisma } from '@prisma/client';
@@ -14,8 +15,13 @@ interface MockPrismaService {
   cupom: {
     findUnique: jest.Mock;
   };
+  inscricaoEdicao: {
+    findFirst: jest.Mock;
+    update: jest.Mock;
+  };
   pagamento: {
     findFirst: jest.Mock;
+    create: jest.Mock;
     update: jest.Mock;
   };
   $queryRaw: jest.Mock;
@@ -37,8 +43,13 @@ describe('InscricoesService', () => {
       cupom: {
         findUnique: jest.fn(),
       },
+      inscricaoEdicao: {
+        findFirst: jest.fn(),
+        update: jest.fn(),
+      },
       pagamento: {
         findFirst: jest.fn(),
+        create: jest.fn(),
         update: jest.fn(),
       },
       $queryRaw: jest.fn().mockResolvedValue([{ id_inscricao_edicao: 1 }]),
@@ -50,10 +61,23 @@ describe('InscricoesService', () => {
         const tx = {
           $queryRaw: prisma.$queryRaw,
           inscricaoEdicao: {
-            update: jest.fn().mockResolvedValue({ id_inscricao_edicao: 1 }),
+            update: jest.fn().mockImplementation((args: any) =>
+              Promise.resolve({
+                id_inscricao_edicao: args?.where?.id_inscricao_edicao || 1,
+                status: args?.data?.status || 'Confirmada',
+                url_qrcode: args?.data?.url_qrcode || 'mock_hash',
+              }),
+            ),
           },
           pagamento: {
-            create: jest.fn().mockResolvedValue({ id_pagamento: 1 }),
+            create: jest.fn().mockImplementation((args: any) =>
+              Promise.resolve({
+                id_pagamento: 1,
+                id_inscricao_edicao: args?.data?.id_inscricao_edicao || 1,
+                valor: args?.data?.valor,
+                status: args?.data?.status || 'Pendente',
+              }),
+            ),
             update: jest.fn().mockResolvedValue({ id_pagamento: 1 }),
           },
         };
@@ -134,6 +158,118 @@ describe('InscricoesService', () => {
       expect(result).toBeDefined();
       expect(prisma.$transaction).toHaveBeenCalled();
       expect(prisma.$queryRaw).toHaveBeenCalled();
+    });
+
+    it('deve lançar BadRequestException se cupom for de outra edicao', async () => {
+      prisma.loteIngresso.findUnique.mockResolvedValue({
+        id_lote: 1,
+        id_edicao: 1,
+        data_abertura_lote: new Date(Date.now() - 10000),
+        data_encerramento_lote: new Date(Date.now() + 10000),
+        numero_max_ingressos: 10,
+        preco: new Prisma.Decimal(100),
+      });
+      prisma.perfilParticipante.findUnique.mockResolvedValue({
+        id_participante: 1,
+      });
+      prisma.cupom.findUnique.mockResolvedValue({
+        id_cupom: 2,
+        id_edicao: 999,
+        codigo: 'CUPOM_OUTRA_EDICAO',
+        percentual_desconto: 20,
+      });
+
+      await expect(
+        service.criarInscricao(1, {
+          id_lote: 1,
+          codigo_cupom: 'CUPOM_OUTRA_EDICAO',
+        }),
+      ).rejects.toThrow(
+        new BadRequestException('Cupom invalido para esta edicao.'),
+      );
+    });
+
+    it('deve confirmar automaticamente a inscricao com cupom de 100% de desconto e marcar pagamento como Aprovado', async () => {
+      prisma.loteIngresso.findUnique.mockResolvedValue({
+        id_lote: 1,
+        id_edicao: 1,
+        data_abertura_lote: new Date(Date.now() - 10000),
+        data_encerramento_lote: new Date(Date.now() + 10000),
+        numero_max_ingressos: 10,
+        preco: new Prisma.Decimal(100),
+      });
+      prisma.perfilParticipante.findUnique.mockResolvedValue({
+        id_participante: 1,
+      });
+      prisma.cupom.findUnique.mockResolvedValue({
+        id_cupom: 1,
+        id_edicao: 1,
+        codigo: 'GRATIS100',
+        percentual_desconto: 100,
+      });
+
+      const result = await service.criarInscricao(1, {
+        id_lote: 1,
+        codigo_cupom: 'GRATIS100',
+      });
+
+      expect(result.inscricao.status).toBe('Confirmada');
+      expect(result.inscricao.url_qrcode).toBeDefined();
+      expect(result.pagamento.status).toBe('Aprovado');
+    });
+  });
+
+  describe('validarQrCode', () => {
+    it('deve validar e credenciar na primeira vez, e lançar BadRequestException por replay attack na segunda vez', async () => {
+      const mockInscricao = {
+        id_inscricao_edicao: 1,
+        status: 'Confirmada',
+        url_qrcode: 'qr_replay_test',
+        participante: {
+          id_participante: 1,
+          usuario: {
+            id_usuario: 1,
+            nome: 'Participante Teste',
+            email: 'teste@example.com',
+          },
+        },
+        lote: { id_lote: 1, id_edicao: 1 },
+      };
+
+      prisma.inscricaoEdicao.findFirst.mockResolvedValue(mockInscricao);
+
+      const primeiraValidacao = await service.validarQrCode('qr_replay_test');
+      expect(primeiraValidacao.valido).toBe(true);
+
+      await expect(service.validarQrCode('qr_replay_test')).rejects.toThrow(
+        new BadRequestException('QR Code ja utilizado para credenciamento.'),
+      );
+    });
+
+    it('não deve retornar o campo senha_hash ao validar QR Code', async () => {
+      const mockInscricaoComSenha = {
+        id_inscricao_edicao: 2,
+        status: 'Confirmada',
+        url_qrcode: 'qr_sem_senha',
+        participante: {
+          id_participante: 2,
+          usuario: {
+            id_usuario: 2,
+            nome: 'Usuario Seguro',
+            email: 'seguro@example.com',
+            senha_hash: '$2b$10$insecure_hash_should_not_leak',
+          },
+        },
+        lote: { id_lote: 1, id_edicao: 1 },
+      };
+
+      prisma.inscricaoEdicao.findFirst.mockResolvedValue(mockInscricaoComSenha);
+
+      const resultado = await service.validarQrCode('qr_sem_senha');
+      expect(resultado.valido).toBe(true);
+      expect(
+        (resultado.inscricao.participante.usuario as any).senha_hash,
+      ).toBeUndefined();
     });
   });
 

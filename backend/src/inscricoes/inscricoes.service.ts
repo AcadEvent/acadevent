@@ -15,6 +15,8 @@ import { WebhookPagamentoDto } from '../pagamentos/dto/webhook-pagamento.dto';
 
 @Injectable()
 export class InscricoesService {
+  private readonly credenciados = new Set<string>();
+
   constructor(private readonly prisma: PrismaService) {}
 
   async criarLote(dto: CriarLoteDto) {
@@ -59,7 +61,9 @@ export class InscricoesService {
     });
 
     if (cupomExistente) {
-      throw new BadRequestException('Ja existe um cupom cadastrado com este codigo.');
+      throw new BadRequestException(
+        'Ja existe um cupom cadastrado com este codigo.',
+      );
     }
 
     return this.prisma.cupom.create({
@@ -126,12 +130,18 @@ export class InscricoesService {
         throw new NotFoundException('Cupom invalido ou nao encontrado.');
       }
 
+      if (cupom.id_edicao !== lote.id_edicao) {
+        throw new BadRequestException('Cupom invalido para esta edicao.');
+      }
+
       const percentualDecimal = new Prisma.Decimal(
         cupom.percentual_desconto,
       ).dividedBy(100);
       const desconto = valorFinal.times(percentualDecimal);
       valorFinal = valorFinal.minus(desconto);
     }
+
+    const isGratuito = valorFinal.lte(0);
 
     return this.prisma.$transaction(async (tx) => {
       const inscricao = await spRealizarInscricaoEdicao(tx, {
@@ -140,15 +150,28 @@ export class InscricoesService {
         id_cupom: cupom ? cupom.id_cupom : null,
       });
 
+      let inscricaoFinal = inscricao;
+      if (isGratuito) {
+        const hash = crypto.randomBytes(16).toString('hex');
+        inscricaoFinal = await tx.inscricaoEdicao.update({
+          where: { id_inscricao_edicao: inscricao.id_inscricao_edicao },
+          data: {
+            status: 'Confirmada',
+            url_qrcode: hash,
+          },
+        });
+      }
+
       const pagamento = await tx.pagamento.create({
         data: {
           id_inscricao_edicao: inscricao.id_inscricao_edicao,
           valor: valorFinal,
-          status: 'Pendente',
+          status: isGratuito ? 'Aprovado' : 'Pendente',
+          data_pagamento: isGratuito ? new Date() : null,
         },
       });
 
-      return { inscricao, pagamento };
+      return { inscricao: inscricaoFinal, pagamento };
     });
   }
 
@@ -211,7 +234,14 @@ export class InscricoesService {
       include: {
         participante: {
           include: {
-            usuario: true,
+            usuario: {
+              select: {
+                id_usuario: true,
+                nome: true,
+                email: true,
+                url_foto: true,
+              },
+            },
           },
         },
         lote: true,
@@ -219,7 +249,9 @@ export class InscricoesService {
     });
 
     if (!inscricao) {
-      throw new NotFoundException('Inscricao invalida ou QR Code nao encontrado.');
+      throw new NotFoundException(
+        'Inscricao invalida ou QR Code nao encontrado.',
+      );
     }
 
     if (inscricao.status !== 'Confirmada') {
@@ -228,8 +260,22 @@ export class InscricoesService {
       );
     }
 
+    if (this.credenciados.has(urlQrcode)) {
+      throw new BadRequestException(
+        'QR Code ja utilizado para credenciamento.',
+      );
+    }
+
+    this.credenciados.add(urlQrcode);
+
+    if (inscricao.participante?.usuario) {
+      delete (inscricao.participante.usuario as Record<string, unknown>)
+        .senha_hash;
+    }
+
     return {
       valido: true,
+      credenciado: true,
       inscricao,
     };
   }

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/unbound-method */
 import {
   BadRequestException,
   ForbiddenException,
@@ -5,6 +6,8 @@ import {
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AtividadesService } from './atividades.service';
+import { AtividadesController } from './atividades.controller';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PrismaService } from '../prisma/prisma.service';
 
 interface MockPrismaService {
@@ -22,6 +25,7 @@ interface MockPrismaService {
     create: jest.Mock;
     findUnique: jest.Mock;
     findFirst: jest.Mock;
+    findMany: jest.Mock;
   };
   presenca: {
     createMany: jest.Mock;
@@ -48,6 +52,7 @@ describe('AtividadesService', () => {
         create: jest.fn(),
         findUnique: jest.fn(),
         findFirst: jest.fn().mockResolvedValue(null),
+        findMany: jest.fn().mockResolvedValue([]),
       },
       presenca: {
         createMany: jest.fn(),
@@ -178,5 +183,120 @@ describe('AtividadesService', () => {
     ]);
     expect(resultado).toEqual({ count: 1 });
     expect(prisma.presenca.createMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('deve aceitar RegistrarPresencaDto estruturado sem lançar TypeError', async () => {
+    prisma.inscricaoAtividade.findUnique.mockResolvedValue({
+      id_inscricao_atividade: 10,
+      id_atividade: 1,
+    });
+    prisma.presenca.createMany.mockResolvedValue({ count: 1 });
+
+    const dtoEstruturado = {
+      presencas: [{ id_inscricao_atividade: 10, status: 'Presente' }],
+    };
+
+    const resultado = await service.registrarChamada(dtoEstruturado);
+    expect(resultado).toEqual({ count: 1 });
+    expect(prisma.presenca.createMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('não deve considerar inscrições canceladas ao verificar capacidade da atividade', async () => {
+    prisma.atividade.findUnique.mockResolvedValue({
+      id_atividade: 1,
+      id_edicao: 1,
+      reservas: [{ espaco: { capacidade_max: 20 } }],
+    });
+    prisma.perfilParticipante.findUnique.mockResolvedValue({
+      id_participante: 10,
+      id_usuario: 1,
+    });
+    prisma.inscricaoEdicao.findFirst.mockResolvedValue({
+      id_inscricao_edicao: 100,
+      status: 'Confirmada',
+    });
+    prisma.inscricaoAtividade.count.mockResolvedValue(19);
+    prisma.inscricaoAtividade.create.mockResolvedValue({
+      id_inscricao_atividade: 1,
+      id_inscricao_edicao: 100,
+      id_atividade: 1,
+      status: 'Inscrito',
+    });
+
+    await service.inscrever(1, { id_atividade: 1 });
+
+    expect(prisma.inscricaoAtividade.count).toHaveBeenCalledWith({
+      where: {
+        id_atividade: 1,
+        status: { not: 'Cancelada' },
+      },
+    });
+  });
+
+  it('não deve gerar conflito de horário com inscrições com status Cancelada', async () => {
+    const dataInicio = new Date('2026-10-01T10:00:00Z');
+    const dataFim = new Date('2026-10-01T12:00:00Z');
+
+    prisma.atividade.findUnique.mockResolvedValue({
+      id_atividade: 2,
+      id_edicao: 1,
+      reservas: [
+        {
+          espaco: { capacidade_max: 20 },
+          data_inicio: dataInicio,
+          data_final: dataFim,
+        },
+      ],
+    });
+    prisma.perfilParticipante.findUnique.mockResolvedValue({
+      id_participante: 10,
+      id_usuario: 1,
+    });
+    prisma.inscricaoEdicao.findFirst.mockResolvedValue({
+      id_inscricao_edicao: 100,
+      status: 'Confirmada',
+    });
+    prisma.inscricaoAtividade.findMany.mockImplementation((args: any) => {
+      if (args?.where?.status?.not === 'Cancelada') {
+        return [];
+      }
+      return [
+        {
+          status: 'Cancelada',
+          atividade: {
+            titulo: 'Atividade Cancelada',
+            reservas: [{ data_inicio: dataInicio, data_final: dataFim }],
+          },
+        },
+      ];
+    });
+    prisma.inscricaoAtividade.count.mockResolvedValue(0);
+    prisma.inscricaoAtividade.create.mockResolvedValue({
+      id_inscricao_atividade: 2,
+      id_inscricao_edicao: 100,
+      id_atividade: 2,
+      status: 'Inscrito',
+    });
+
+    const resultado = await service.inscrever(1, { id_atividade: 2 });
+    expect(resultado).toBeDefined();
+    expect(prisma.inscricaoAtividade.create).toHaveBeenCalled();
+  });
+
+  describe('AtividadesController - chamada sem JWT', () => {
+    it('deve possuir JwtAuthGuard aplicado ao endpoint chamada', () => {
+      const guards = Reflect.getMetadata(
+        '__guards__',
+        AtividadesController.prototype.chamada,
+      );
+      expect(guards).toBeDefined();
+      const temJwtGuard = guards.some(
+        (guard: any) =>
+          guard === JwtAuthGuard ||
+          guard?.name === 'JwtAuthGuard' ||
+          (typeof guard === 'function' && guard.name === 'JwtAuthGuard'),
+      );
+      expect(temJwtGuard).toBe(true);
+    });
   });
 });
