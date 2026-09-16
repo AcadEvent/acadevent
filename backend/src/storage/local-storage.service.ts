@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
@@ -24,7 +24,30 @@ export class LocalStorageService extends StorageServiceBase {
     arquivo: ArquivoUpload,
     subpasta = 'geral',
   ): Promise<ArquivoSalvo> {
-    const destinoPasta = path.join(this.uploadDir, subpasta);
+    let decodedSubpasta = subpasta;
+    try {
+      decodedSubpasta = decodeURIComponent(subpasta);
+    } catch {
+      throw new ForbiddenException('Acesso negado.');
+    }
+
+    if (
+      subpasta.includes('..') ||
+      decodedSubpasta.includes('..') ||
+      subpasta.toLowerCase().includes('%2e%2e') ||
+      decodedSubpasta.includes('\0')
+    ) {
+      throw new ForbiddenException('Acesso negado.');
+    }
+
+    const destinoPasta = path.resolve(this.uploadDir, decodedSubpasta);
+    if (
+      !destinoPasta.startsWith(this.uploadDir + path.sep) &&
+      destinoPasta !== this.uploadDir
+    ) {
+      throw new ForbiddenException('Acesso negado.');
+    }
+
     if (!fs.existsSync(destinoPasta)) {
       fs.mkdirSync(destinoPasta, { recursive: true });
     }
@@ -37,7 +60,7 @@ export class LocalStorageService extends StorageServiceBase {
     await fs.promises.writeFile(caminhoFinal, arquivo.buffer);
 
     const caminhoRelativo = path
-      .join(subpasta, nomeArmazenado)
+      .join(decodedSubpasta, nomeArmazenado)
       .replace(/\\/g, '/');
     const url = `/storage/arquivos/${caminhoRelativo}`;
 
@@ -54,7 +77,27 @@ export class LocalStorageService extends StorageServiceBase {
   }
 
   async excluirArquivo(caminhoRelativo: string): Promise<boolean> {
-    const caminhoFinal = path.join(this.uploadDir, caminhoRelativo);
+    let decoded = caminhoRelativo;
+    try {
+      decoded = decodeURIComponent(caminhoRelativo);
+    } catch {
+      throw new ForbiddenException('Acesso negado.');
+    }
+
+    if (
+      caminhoRelativo.includes('..') ||
+      decoded.includes('..') ||
+      caminhoRelativo.toLowerCase().includes('%2e%2e') ||
+      decoded.includes('\0')
+    ) {
+      throw new ForbiddenException('Acesso negado.');
+    }
+
+    const caminhoFinal = path.resolve(this.uploadDir, decoded);
+    if (!caminhoFinal.startsWith(this.uploadDir + path.sep)) {
+      throw new ForbiddenException('Acesso negado.');
+    }
+
     if (fs.existsSync(caminhoFinal)) {
       await fs.promises.unlink(caminhoFinal);
       return true;

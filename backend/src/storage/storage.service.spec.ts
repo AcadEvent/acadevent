@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access */
 import { Test, TestingModule } from '@nestjs/testing';
 import * as fs from 'fs';
+import { ForbiddenException } from '@nestjs/common';
 import { LocalStorageService } from './local-storage.service';
 import { ArquivoUpload } from './storage.interface';
 
@@ -54,5 +56,24 @@ describe('LocalStorageService', () => {
     const excluiu = await service.excluirArquivo('trabalhos/arquivo.pdf');
     expect(excluiu).toBe(true);
     expect(fs.promises.unlink).toHaveBeenCalled();
+  });
+
+  it('deve lancar ForbiddenException ao tentar excluir arquivo com caminho contendo ".." e nunca excluir arquivos fora de uploads/', async () => {
+    (fs.promises.unlink as jest.Mock).mockClear();
+
+    await expect(service.excluirArquivo('../arquivo.txt')).rejects.toThrow(
+      ForbiddenException,
+    );
+    await expect(
+      service.excluirArquivo('trabalhos/../../arquivo.txt'),
+    ).rejects.toThrow(ForbiddenException);
+    await expect(service.excluirArquivo('%2e%2e/arquivo.txt')).rejects.toThrow(
+      ForbiddenException,
+    );
+    await expect(service.excluirArquivo('/etc/passwd')).rejects.toThrow(
+      ForbiddenException,
+    );
+
+    expect(fs.promises.unlink).not.toHaveBeenCalled();
   });
 });
