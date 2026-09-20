@@ -3,12 +3,14 @@
  * Ver docs/arquitetura-frontend.md §4. Não importar de src/lib/mock nas páginas.
  */
 import type { Atividade, Evento, Ministrante } from "@/lib/types";
+import type { DashboardEvento } from "@/lib/types";
 import {
   mockAtividades,
   mockEventos,
   mockMeusEventosSlugs,
   mockMinistrantes,
 } from "@/lib/mock/eventos";
+import { mockDashboardIndicadores } from "@/lib/mock/eventos";
 import { fake } from "./_client";
 
 export function getEventos(): Promise<Evento[]> {
@@ -70,4 +72,28 @@ export function postEvento(
 
   mockEventos.push(evento);
   return fake(evento);
+}
+
+/** Visão consolidada da edição para o organizador (RF03.2.1). */
+export function getDashboard(slug: string): Promise<DashboardEvento | null> {
+  const evento = mockEventos.find((item) => item.slug === slug);
+  const indicadores = mockDashboardIndicadores[slug];
+
+  if (!evento || !indicadores) {
+    return fake(null);
+  }
+
+  return fake({
+    evento: {
+      slug: evento.slug,
+      nome: evento.nome,
+      sigla: evento.sigla,
+      edicao: evento.edicao,
+      status: evento.status,
+      inicio: evento.inicio,
+      fim: evento.fim,
+      capacidade: evento.capacidade,
+    },
+    ...indicadores,
+  });
 }
