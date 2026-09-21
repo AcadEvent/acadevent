@@ -10,12 +10,19 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { timingSafeEqual } from 'crypto';
 import { PagamentosService } from './pagamentos.service';
 import { WebhookPagamentoDto } from './dto/webhook-pagamento.dto';
 import { ConfirmarPagamentoManualDto } from './dto/confirmar-pagamento-manual.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+
+function segredosIguais(recebido: string, esperado: string): boolean {
+  const a = Buffer.from(recebido);
+  const b = Buffer.from(esperado);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
 
 @ApiTags('pagamentos')
 @Controller('pagamentos')
@@ -31,10 +38,9 @@ export class PagamentosController {
   ) {
     const secret =
       secretHeader || signatureHeader || dto.secret || dto.assinatura;
-    const expectedSecret =
-      process.env.WEBHOOK_SECRET || 'acadevent_webhook_secret';
+    const expectedSecret = process.env.WEBHOOK_SECRET;
 
-    if (!secret || secret !== expectedSecret) {
+    if (!expectedSecret || !secret || !segredosIguais(secret, expectedSecret)) {
       throw new UnauthorizedException(
         'Assinatura ou segredo do webhook ausente ou invalido.',
       );

@@ -25,8 +25,8 @@ export class PagamentosService {
       );
     }
 
-    // Idempotência: se pagamento já for 'Aprovado', retorna sem alterar url_qrcode
-    if (pagamento.status === 'Aprovado') {
+    // Idempotência: reenvio de 'Aprovado' para pagamento já aprovado não recria o url_qrcode
+    if (pagamento.status === 'Aprovado' && dto.status === 'Aprovado') {
       return {
         pagamento,
         inscricao: pagamento.inscricao,

@@ -16,7 +16,7 @@ import { PagamentosController } from './pagamentos.controller';
 import { PagamentosService } from './pagamentos.service';
 
 process.env.JWT_SECRET = 'test_secret_for_pagamentos_spec';
-process.env.WEBHOOK_SECRET = 'acadevent_webhook_secret';
+process.env.WEBHOOK_SECRET = 'segredo_webhook_teste_spec';
 
 describe('Pagamentos (Controller & Service)', () => {
   let app: INestApplication;
@@ -160,9 +160,33 @@ describe('Pagamentos (Controller & Service)', () => {
 
       await request(app.getHttpServer())
         .post('/pagamentos/webhook')
-        .set('x-webhook-secret', 'acadevent_webhook_secret')
+        .set('x-webhook-secret', 'segredo_webhook_teste_spec')
         .send({ gateway_id: 'gw-100', status: 'Aprovado' })
         .expect(201);
+    });
+
+    it('webhook com o antigo segredo padrao do codigo retorna 401', async () => {
+      await request(app.getHttpServer())
+        .post('/pagamentos/webhook')
+        .set('x-webhook-secret', 'acadevent_webhook_secret')
+        .send({ gateway_id: 'gw-100', status: 'Aprovado' })
+        .expect(401);
+      expect(mockPrismaService.pagamento.findFirst).not.toHaveBeenCalled();
+    });
+
+    it('webhook retorna 401 quando WEBHOOK_SECRET nao esta configurado', async () => {
+      const original = process.env.WEBHOOK_SECRET;
+      try {
+        delete process.env.WEBHOOK_SECRET;
+        await request(app.getHttpServer())
+          .post('/pagamentos/webhook')
+          .set('x-webhook-secret', 'acadevent_webhook_secret')
+          .send({ gateway_id: 'gw-100', status: 'Aprovado' })
+          .expect(401);
+      } finally {
+        process.env.WEBHOOK_SECRET = original;
+      }
+      expect(mockPrismaService.pagamento.findFirst).not.toHaveBeenCalled();
     });
   });
 
@@ -230,6 +254,40 @@ describe('Pagamentos (Controller & Service)', () => {
           }),
         }),
       );
+    });
+  });
+
+  describe('PagamentosService - processarWebhook estorno e cancelamento', () => {
+    it('processa estorno de pagamento ja Aprovado e marca a inscricao como Estornada', async () => {
+      mockPrismaService.pagamento.findFirst.mockResolvedValue({
+        id_pagamento: 3,
+        gateway_id: 'gw-estorno',
+        status: 'Aprovado',
+        id_inscricao_edicao: 3,
+        inscricao: { id_inscricao_edicao: 3, status: 'Confirmada' },
+      });
+      mockPrismaService.pagamento.update.mockResolvedValue({
+        id_pagamento: 3,
+        status: 'Estornado',
+      });
+      mockPrismaService.inscricaoEdicao.update.mockResolvedValue({
+        id_inscricao_edicao: 3,
+        status: 'Estornada',
+      });
+
+      await service.processarWebhook({
+        gateway_id: 'gw-estorno',
+        status: 'Estornado',
+      });
+
+      expect(mockPrismaService.pagamento.update).toHaveBeenCalledWith({
+        where: { id_pagamento: 3 },
+        data: { status: 'Estornado' },
+      });
+      expect(mockPrismaService.inscricaoEdicao.update).toHaveBeenCalledWith({
+        where: { id_inscricao_edicao: 3 },
+        data: { status: 'Estornada' },
+      });
     });
   });
 
