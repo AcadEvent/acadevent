@@ -143,6 +143,30 @@ describe('Submissoes (Controller & Service)', () => {
           nota: 10,
         })
         .expect(201);
+
+      expect(prisma.perfilParecerista.findUnique).toHaveBeenCalledWith({
+        where: { id_usuario: 5 },
+      });
+    });
+
+    it('avaliar trabalho por organizador sem perfil de parecerista retorna 403', async () => {
+      const tokenOrganizador = jwtService.sign({
+        sub: 7,
+        email: 'organizador@teste.com',
+        nome: 'Organizador Teste',
+        perfis: ['organizador'],
+      });
+
+      await request(app.getHttpServer())
+        .post('/submissoes/avaliacoes')
+        .set('Authorization', `Bearer ${tokenOrganizador}`)
+        .send({
+          id_trabalho: 1,
+          status: 'Aceito',
+          parecer: 'Excelente',
+          nota: 10,
+        })
+        .expect(403);
     });
   });
 
@@ -157,18 +181,34 @@ describe('Submissoes (Controller & Service)', () => {
 
     it('deve lançar NotFoundException se o trabalho nao existir', async () => {
       prisma.trabalhoAcademico.findUnique.mockResolvedValue(null);
-      await expect(service.registrarAvaliacao(dto)).rejects.toThrow(
+      await expect(service.registrarAvaliacao(dto, 99)).rejects.toThrow(
         NotFoundException,
       );
     });
 
-    it('deve lançar NotFoundException se o parecerista nao existir', async () => {
+    it('deve lançar ForbiddenException se o usuario autenticado nao for parecerista', async () => {
       prisma.trabalhoAcademico.findUnique.mockResolvedValue({ id_trabalho: 1 });
       prisma.perfilParecerista.findUnique.mockResolvedValue(null);
 
-      await expect(service.registrarAvaliacao(dto)).rejects.toThrow(
-        NotFoundException,
+      await expect(service.registrarAvaliacao(dto, 99)).rejects.toThrow(
+        ForbiddenException,
       );
+    });
+
+    it('deve lançar ForbiddenException ao avaliar em nome de outro parecerista', async () => {
+      prisma.trabalhoAcademico.findUnique.mockResolvedValue({
+        id_trabalho: 1,
+        submissoes: [],
+      });
+      prisma.perfilParecerista.findUnique.mockResolvedValue({
+        id_parecerista: 2,
+        id_usuario: 99,
+      });
+
+      await expect(
+        service.registrarAvaliacao({ ...dto, id_parecerista: 1 }, 99),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.$transaction).not.toHaveBeenCalled();
     });
 
     it('autor avaliando o próprio artigo lança ForbiddenException (conflito de interesses / blind review)', async () => {
@@ -193,7 +233,7 @@ describe('Submissoes (Controller & Service)', () => {
         id_usuario: 50,
       });
 
-      await expect(service.registrarAvaliacao(dto)).rejects.toThrow(
+      await expect(service.registrarAvaliacao(dto, 50)).rejects.toThrow(
         ForbiddenException,
       );
       expect(prisma.$transaction).not.toHaveBeenCalled();
@@ -218,9 +258,40 @@ describe('Submissoes (Controller & Service)', () => {
         id_usuario: 99,
       });
 
-      const result = await service.registrarAvaliacao(dto);
+      const result = await service.registrarAvaliacao(dto, 99);
       expect(result).toEqual(expect.objectContaining({ id_avaliacao: 1 }));
+      expect(prisma.perfilParecerista.findUnique).toHaveBeenCalledWith({
+        where: { id_usuario: 99 },
+      });
       expect(prisma.$queryRaw).toHaveBeenCalled();
+    });
+
+    it('usa o parecerista do token quando id_parecerista nao e enviado', async () => {
+      prisma.trabalhoAcademico.findUnique.mockResolvedValue({
+        id_trabalho: 1,
+        submissoes: [],
+      });
+      prisma.perfilParecerista.findUnique.mockResolvedValue({
+        id_parecerista: 3,
+        id_usuario: 99,
+      });
+
+      const semParecerista = {
+        id_trabalho: dto.id_trabalho,
+        status: dto.status,
+        parecer: dto.parecer,
+        nota: dto.nota,
+      };
+      await service.registrarAvaliacao(semParecerista, 99);
+
+      expect(prisma.$queryRaw).toHaveBeenCalledWith(
+        expect.anything(),
+        3,
+        dto.id_trabalho,
+        dto.status,
+        dto.parecer,
+        expect.anything(),
+      );
     });
   });
 });

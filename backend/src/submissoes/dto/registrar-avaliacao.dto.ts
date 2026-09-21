@@ -3,6 +3,7 @@ import {
   IsInt,
   IsNotEmpty,
   IsNumber,
+  IsOptional,
   IsString,
   Max,
   Min,
@@ -10,7 +11,8 @@ import {
 
 export class RegistrarAvaliacaoDto {
   @IsInt()
-  id_parecerista: number;
+  @IsOptional()
+  id_parecerista?: number;
 
   @IsInt()
   id_trabalho: number;

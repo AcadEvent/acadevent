@@ -12,7 +12,7 @@ import { RegistrarAvaliacaoDto } from './dto/registrar-avaliacao.dto';
 export class SubmissoesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async registrarAvaliacao(dto: RegistrarAvaliacaoDto) {
+  async registrarAvaliacao(dto: RegistrarAvaliacaoDto, idUsuario: number) {
     const trabalho = await this.prisma.trabalhoAcademico.findUnique({
       where: { id_trabalho: dto.id_trabalho },
       include: {
@@ -29,19 +29,27 @@ export class SubmissoesService {
     }
 
     const parecerista = await this.prisma.perfilParecerista.findUnique({
-      where: { id_parecerista: dto.id_parecerista },
+      where: { id_usuario: idUsuario },
     });
 
     if (!parecerista) {
-      throw new NotFoundException('Perfil de parecerista nao encontrado.');
+      throw new ForbiddenException(
+        'Usuario autenticado nao possui perfil de parecerista.',
+      );
     }
 
-    const ehAutor = trabalho.submissoes?.some((submissao) => {
-      if (submissao.autor && parecerista.id_usuario) {
-        return submissao.autor.id_usuario === parecerista.id_usuario;
-      }
-      return submissao.id_autor === dto.id_parecerista;
-    });
+    if (
+      dto.id_parecerista !== undefined &&
+      dto.id_parecerista !== parecerista.id_parecerista
+    ) {
+      throw new ForbiddenException(
+        'Nao e permitido registrar avaliacao em nome de outro parecerista.',
+      );
+    }
+
+    const ehAutor = trabalho.submissoes?.some(
+      (submissao) => submissao.autor?.id_usuario === parecerista.id_usuario,
+    );
 
     if (ehAutor) {
       throw new ForbiddenException(
@@ -51,7 +59,7 @@ export class SubmissoesService {
 
     return this.prisma.$transaction(async (tx) =>
       spRegistrarAvaliacaoTrabalho(tx, {
-        id_parecerista: dto.id_parecerista,
+        id_parecerista: parecerista.id_parecerista,
         id_trabalho: dto.id_trabalho,
         status: dto.status,
         parecer: dto.parecer,
