@@ -1,4 +1,8 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Prisma } from '@prisma/client';
 import type { Response } from 'express';
@@ -57,7 +61,7 @@ describe('CertificadosService', () => {
   });
 
   describe('emitirCertificadoAtividade', () => {
-    const dto: EmitirCertificadoAtividadeDto = {
+    const dto: Required<EmitirCertificadoAtividadeDto> = {
       id_edicao: 1,
       id_atividade: 10,
       id_usuario: 6,
@@ -206,7 +210,7 @@ describe('CertificadosService', () => {
       textSpy.mockRestore();
     });
 
-    it('deve usar FRONTEND_URL ou http://localhost:3000 na URL de validacao impressa no PDF', async () => {
+    it('deve usar FRONTEND_URL ou http://localhost:3001 (frontend) na URL de validacao impressa no PDF', async () => {
       const textSpy = jest.spyOn(PDFDocument.prototype, 'text');
       prisma.certificado.findUnique.mockResolvedValue({
         id_certificado: 1,
@@ -228,13 +232,61 @@ describe('CertificadosService', () => {
             typeof t === 'string' && t.includes('Valide este certificado em:'),
         );
         expect(validationUrlText).toContain(
-          'http://localhost:3000/validar/AUTH-VALIDO',
+          'http://localhost:3001/validar/AUTH-VALIDO',
         );
-        expect(validationUrlText).not.toContain('http://localhost:3001');
+        expect(validationUrlText).not.toContain('http://localhost:3000');
       } finally {
         process.env.FRONTEND_URL = originalEnv;
         textSpy.mockRestore();
       }
+    });
+  });
+
+  describe('CertificadosController - emitirCertificadoAtividade', () => {
+    const participante = {
+      id_usuario: 7,
+      email: 'participante@teste.com',
+      nome: 'Participante',
+      perfis: ['participante'],
+    };
+
+    beforeEach(() => {
+      prisma.edicao.findUnique.mockResolvedValue({ id_edicao: 1 });
+      prisma.usuario.findUnique.mockResolvedValue({ id_usuario: 7 });
+    });
+
+    it('participante sem id_usuario no corpo emite o proprio certificado', async () => {
+      await controller.emitirCertificadoAtividade(
+        { id_edicao: 1, id_atividade: 10 },
+        participante,
+      );
+
+      expect(prisma.usuario.findUnique).toHaveBeenCalledWith({
+        where: { id_usuario: 7 },
+      });
+      expect(prisma.$queryRaw).toHaveBeenCalled();
+    });
+
+    it('participante emitindo para outro usuario lanca ForbiddenException', async () => {
+      await expect(
+        controller.emitirCertificadoAtividade(
+          { id_edicao: 1, id_atividade: 10, id_usuario: 6 },
+          participante,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('organizador pode emitir certificado para outro usuario', async () => {
+      await controller.emitirCertificadoAtividade(
+        { id_edicao: 1, id_atividade: 10, id_usuario: 6 },
+        { ...participante, id_usuario: 2, perfis: ['organizador'] },
+      );
+
+      expect(prisma.usuario.findUnique).toHaveBeenCalledWith({
+        where: { id_usuario: 6 },
+      });
+      expect(prisma.$queryRaw).toHaveBeenCalled();
     });
   });
 

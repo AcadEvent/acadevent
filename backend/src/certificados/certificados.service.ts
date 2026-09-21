@@ -22,7 +22,9 @@ export class CertificadosService {
     return `${local[0]}***${local[local.length - 1]}@${dominio}`;
   }
 
-  async emitirCertificadoAtividade(dto: EmitirCertificadoAtividadeDto) {
+  async emitirCertificadoAtividade(
+    dto: Required<EmitirCertificadoAtividadeDto>,
+  ) {
     const edicao = await this.prisma.edicao.findUnique({
       where: { id_edicao: dto.id_edicao },
     });
@@ -185,7 +187,7 @@ export class CertificadosService {
           align: 'center',
         });
 
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
 
       doc
         .font('Helvetica')

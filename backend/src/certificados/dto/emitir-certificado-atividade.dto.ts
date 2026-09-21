@@ -1,4 +1,4 @@
-import { IsInt } from 'class-validator';
+import { IsInt, IsOptional } from 'class-validator';
 
 export class EmitirCertificadoAtividadeDto {
   @IsInt()
@@ -8,5 +8,6 @@ export class EmitirCertificadoAtividadeDto {
   id_atividade: number;
 
   @IsInt()
-  id_usuario: number;
+  @IsOptional()
+  id_usuario?: number;
 }
