@@ -13,10 +13,12 @@ import { CriarEspacoDto } from './dto/criar-espaco.dto';
 import { ReservarEspacoDto } from './dto/reservar-espaco.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 
 @ApiTags('espacos')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('organizador', 'administrador')
 @Controller('espacos')
 export class EspacosController {
   constructor(private readonly espacosService: EspacosService) {}
