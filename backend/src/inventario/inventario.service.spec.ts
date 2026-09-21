@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument */
 import {
   BadRequestException,
+  ForbiddenException,
   INestApplication,
   NotFoundException,
 } from '@nestjs/common';
@@ -164,6 +165,10 @@ describe('Inventario (Controller & Service)', () => {
           quantidade_retirada: 1,
         })
         .expect(201);
+
+      expect(prisma.perfilOrganizador.findUnique).toHaveBeenCalledWith({
+        where: { id_usuario: 2 },
+      });
     });
   });
 
@@ -171,12 +176,47 @@ describe('Inventario (Controller & Service)', () => {
     it('deve lançar NotFoundException se o item nao existir', async () => {
       prisma.itemInventarioFisico.findUnique.mockResolvedValue(null);
       await expect(
-        service.retirarItem({
-          id_item: 99,
-          id_organizador: 1,
-          quantidade_retirada: 1,
-        }),
+        service.retirarItem(
+          {
+            id_item: 99,
+            id_organizador: 1,
+            quantidade_retirada: 1,
+          },
+          2,
+        ),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('deve lançar ForbiddenException se o usuario autenticado nao for organizador', async () => {
+      prisma.itemInventarioFisico.findUnique.mockResolvedValue({
+        id_item: 1,
+        quantidade_disponivel: 5,
+      });
+      prisma.perfilOrganizador.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.retirarItem({ id_item: 1, quantidade_retirada: 1 }, 2),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('deve lançar ForbiddenException ao registrar retirada em nome de outro organizador', async () => {
+      prisma.itemInventarioFisico.findUnique.mockResolvedValue({
+        id_item: 1,
+        quantidade_disponivel: 5,
+      });
+      prisma.perfilOrganizador.findUnique.mockResolvedValue({
+        id_organizador: 1,
+        id_usuario: 2,
+      });
+
+      await expect(
+        service.retirarItem(
+          { id_item: 1, id_organizador: 9, quantidade_retirada: 1 },
+          2,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.$transaction).not.toHaveBeenCalled();
     });
 
     it('deve chamar sp_retirar_inventario na transacao', async () => {
@@ -188,15 +228,20 @@ describe('Inventario (Controller & Service)', () => {
         id_organizador: 1,
       });
 
-      const result = await service.retirarItem({
-        id_item: 1,
-        id_organizador: 1,
-        quantidade_retirada: 2,
-      });
+      const result = await service.retirarItem(
+        {
+          id_item: 1,
+          quantidade_retirada: 2,
+        },
+        2,
+      );
 
       expect(result.registro).toEqual(
         expect.objectContaining({ id_registro_item: 1 }),
       );
+      expect(prisma.perfilOrganizador.findUnique).toHaveBeenCalledWith({
+        where: { id_usuario: 2 },
+      });
       expect(prisma.$queryRaw).toHaveBeenCalled();
       expect(prisma.$transaction).toHaveBeenCalled();
     });

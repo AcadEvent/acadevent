@@ -4,8 +4,9 @@ export class RetirarItemDto {
   @IsInt()
   id_item: number;
 
+  @IsOptional()
   @IsInt()
-  id_organizador: number;
+  id_organizador?: number;
 
   @IsOptional()
   @IsInt()

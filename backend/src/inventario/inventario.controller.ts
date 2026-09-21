@@ -15,6 +15,7 @@ import { RetirarItemDto } from './dto/retirar-item.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @ApiTags('inventario')
 @ApiBearerAuth()
@@ -40,8 +41,11 @@ export class InventarioController {
 
   @ApiOperation({ summary: 'Retirar item de inventário' })
   @Post('retirar')
-  async retirarItem(@Body() dto: RetirarItemDto) {
-    return this.inventarioService.retirarItem(dto);
+  async retirarItem(
+    @Body() dto: RetirarItemDto,
+    @CurrentUser() usuario: { id_usuario: number },
+  ) {
+    return this.inventarioService.retirarItem(dto, usuario.id_usuario);
   }
 
   @ApiOperation({ summary: 'Devolver item de inventário' })
