@@ -1,4 +1,5 @@
 import type { Atividade, Evento, Ministrante } from "@/lib/types";
+import type { DashboardEvento } from "@/lib/types";
 
 /**
  * Dados de exemplo servidos por trás de src/lib/api enquanto a API NestJS não
@@ -123,3 +124,31 @@ export const mockAtividades: Atividade[] = [
     ministrantesIds: ["m1", "m2"],
   },
 ];
+
+/** Agregados que futuramente serão calculados pela API a partir da edição. */
+export const mockDashboardIndicadores: Record<
+  string,
+  Omit<DashboardEvento, "evento">
+> = {
+  "sitc-2026": {
+    totalInscricoes: 348,
+    inscricoesConfirmadas: 301,
+    inscricoesPendentes: 47,
+    totalAtividades: 18,
+    receitaConfirmada: 27750,
+  },
+  "enebio-2026": {
+    totalInscricoes: 0,
+    inscricoesConfirmadas: 0,
+    inscricoesPendentes: 0,
+    totalAtividades: 9,
+    receitaConfirmada: 0,
+  },
+  "jornada-eng-2025": {
+    totalInscricoes: 247,
+    inscricoesConfirmadas: 238,
+    inscricoesPendentes: 9,
+    totalAtividades: 22,
+    receitaConfirmada: 17850,
+  },
+};

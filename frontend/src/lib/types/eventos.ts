@@ -75,3 +75,23 @@ export interface Evento {
   aberturaInscricoes?: string; // ISO — para contagem regressiva (RF01.2.5)
   capacidade?: number;
 }
+
+/** Indicadores consolidados da edição para o painel do organizador (RF03.2.1). */
+export interface DashboardEvento {
+  evento: Pick<
+    Evento,
+    | "slug"
+    | "nome"
+    | "sigla"
+    | "edicao"
+    | "status"
+    | "inicio"
+    | "fim"
+    | "capacidade"
+  >;
+  totalInscricoes: number;
+  inscricoesConfirmadas: number;
+  inscricoesPendentes: number;
+  totalAtividades: number;
+  receitaConfirmada: number;
+}
