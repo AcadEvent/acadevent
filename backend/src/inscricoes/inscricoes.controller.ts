@@ -8,12 +8,16 @@ import {
   Post,
   Req,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
 import { InscricoesService } from './inscricoes.service';
 import { CriarInscricaoDto } from './dto/criar-inscricao.dto';
 import { CriarLoteDto } from './dto/criar-lote.dto';
 import { CriarCupomDto } from './dto/criar-cupom.dto';
 import { ValidarQrCodeDto } from './dto/validar-qrcode.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 
 interface RequestWithUser {
   user?: {
@@ -68,6 +72,8 @@ export class InscricoesController {
     return this.inscricoesService.listarCuponsPorEdicao(idEdicao);
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('organizador', 'administrador')
   @Post('validar-qrcode')
   async validarQrCode(@Body() dto: ValidarQrCodeDto) {
     return this.inscricoesService.validarQrCode(dto.url_qrcode);

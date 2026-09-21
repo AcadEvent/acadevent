@@ -91,6 +91,13 @@ describe('Security & Access Control (e2e)', () => {
         .expect(401);
     });
 
+    it('deve rejeitar validacao de QR Code de check-in anonima com 401 Unauthorized', () => {
+      return request(app.getHttpServer())
+        .post('/inscricoes/validar-qrcode')
+        .send({ url_qrcode: 'qr_qualquer' })
+        .expect(401);
+    });
+
     it('deve rejeitar consulta a logs administrativos sem autenticacao com 401 Unauthorized', () => {
       return request(app.getHttpServer()).get('/admin/logs').expect(401);
     });
