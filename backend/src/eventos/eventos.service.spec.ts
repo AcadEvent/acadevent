@@ -139,6 +139,35 @@ describe('EventosService', () => {
 
       expect(resultado).toBeDefined();
       expect(resultado.edicao.sigla).toBe('tech2026');
+      expect(resultado.edicao.slug).toBe('tech2026');
+    });
+
+    it('deve aceitar slug quando sigla nao for explicitamente informada', async () => {
+      mockPrismaService.perfilOrganizador.findUnique.mockResolvedValue({
+        id_organizador: 10,
+      });
+      mockPrismaService.evento.create.mockResolvedValue({
+        id_evento: 2,
+        nome_marca: 'Semana Tech 2',
+      });
+      mockPrismaService.edicao.create.mockImplementation((args) => ({
+        id_edicao: 2,
+        titulo_oficial: 'Semana Tech 2027',
+        sigla: args.data.sigla,
+      }));
+
+      const resultado = await service.criarEvento(1, {
+        nome_marca: 'Semana Tech 2',
+        titulo_oficial: 'Semana Tech 2027',
+        slug: 'tech2027',
+        unidade_promotora: 'FACOM',
+        data_abertura_evento: new Date('2027-10-10'),
+        data_encerramento_evento: new Date('2027-10-12'),
+      });
+
+      expect(resultado).toBeDefined();
+      expect(resultado.edicao.sigla).toBe('tech2027');
+      expect(resultado.edicao.slug).toBe('tech2027');
     });
   });
 

@@ -28,11 +28,13 @@ describe('Pagamentos (Controller & Service)', () => {
       findUnique: jest.fn(),
       update: jest.fn(),
       findMany: jest.fn(),
+      groupBy: jest.fn(),
     },
     pagamento: {
       findFirst: jest.fn(),
       update: jest.fn(),
       create: jest.fn(),
+      aggregate: jest.fn(),
     },
     edicao: {
       findUnique: jest.fn(),
@@ -320,27 +322,31 @@ describe('Pagamentos (Controller & Service)', () => {
         titulo_oficial: 'Semana de TI',
       });
 
-      mockPrismaService.inscricaoEdicao.findMany.mockResolvedValue([
-        {
-          id_inscricao_edicao: 1,
-          status: 'Confirmada',
-          pagamentos: [{ status: 'Aprovado', valor: new Prisma.Decimal(100) }],
-        },
-        {
-          id_inscricao_edicao: 2,
-          status: 'Pendente',
-          pagamentos: [{ status: 'Pendente', valor: new Prisma.Decimal(50) }],
-        },
+      mockPrismaService.inscricaoEdicao.groupBy.mockResolvedValue([
+        { status: 'Confirmada', _count: { _all: 1 } },
+        { status: 'Pendente', _count: { _all: 1 } },
       ]);
+
+      mockPrismaService.pagamento.aggregate
+        .mockResolvedValueOnce({
+          _sum: { valor: new Prisma.Decimal(100) },
+        })
+        .mockResolvedValueOnce({
+          _sum: { valor: new Prisma.Decimal(50) },
+        });
 
       const relatorio = await service.gerarRelatorioFinanceiro(1);
 
       expect(relatorio.id_edicao).toBe(1);
+      expect(relatorio.resumo_inscricoes.total).toBe(2);
       expect(relatorio.resumo_inscricoes.confirmadas).toBe(1);
       expect(relatorio.resumo_inscricoes.pendentes).toBe(1);
       expect(
         relatorio.resumo_financeiro.receita_total_confirmada.toString(),
       ).toBe('100');
+      expect(
+        relatorio.resumo_financeiro.valor_total_pendente.toString(),
+      ).toBe('50');
     });
   });
 });

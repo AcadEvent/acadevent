@@ -184,28 +184,30 @@ export class AtividadesService {
       }
     }
 
-    const inscritosAtuais = await this.prisma.inscricaoAtividade.count({
-      where: {
-        id_atividade: dto.id_atividade,
-        status: { not: 'Cancelada' },
-      },
-    });
+    return this.prisma.$transaction(async (tx) => {
+      const inscritosAtuais = await tx.inscricaoAtividade.count({
+        where: {
+          id_atividade: dto.id_atividade,
+          status: { not: 'Cancelada' },
+        },
+      });
 
-    if (reservaAtual && reservaAtual.espaco) {
-      const capacidadeMax = reservaAtual.espaco.capacidade_max;
-      if (inscritosAtuais >= capacidadeMax) {
-        throw new BadRequestException(
-          'Lotacao maxima do espaco fisico atingida.',
-        );
+      if (reservaAtual && reservaAtual.espaco) {
+        const capacidadeMax = reservaAtual.espaco.capacidade_max;
+        if (inscritosAtuais >= capacidadeMax) {
+          throw new BadRequestException(
+            'Lotacao maxima do espaco fisico atingida.',
+          );
+        }
       }
-    }
 
-    return this.prisma.inscricaoAtividade.create({
-      data: {
-        id_inscricao_edicao: inscricaoEdicao.id_inscricao_edicao,
-        id_atividade: dto.id_atividade,
-        status: 'Inscrito',
-      },
+      return tx.inscricaoAtividade.create({
+        data: {
+          id_inscricao_edicao: inscricaoEdicao.id_inscricao_edicao,
+          id_atividade: dto.id_atividade,
+          status: 'Inscrito',
+        },
+      });
     });
   }
 

@@ -2,14 +2,13 @@ import {
   Body,
   Controller,
   Get,
-  Headers,
   Param,
   ParseIntPipe,
   Post,
-  Req,
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AtividadesService } from './atividades.service';
 import { InscreverAtividadeDto } from './dto/inscrever-atividade.dto';
 import {
@@ -19,68 +18,74 @@ import {
 import { CriarAtividadeDto } from './dto/criar-atividade.dto';
 import { AssociarMinistranteDto } from './dto/associar-ministrante.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import {
+  CurrentUser,
+  type UsuarioAutenticadoRequest,
+} from '../auth/decorators/current-user.decorator';
 
-interface RequestWithUser {
-  user?: {
-    id_usuario?: number;
-    sub?: number;
-  };
-}
-
+@ApiTags('atividades')
 @Controller('atividades')
 export class AtividadesController {
   constructor(private readonly atividadesService: AtividadesService) {}
 
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Criar atividade no evento (organizador/admin)' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('organizador', 'administrador')
   @Post()
   async criarAtividade(@Body() dto: CriarAtividadeDto) {
     return this.atividadesService.criarAtividade(dto);
   }
 
+  @ApiOperation({ summary: 'Obter cronograma de atividades da edicao' })
   @Get('cronograma/edicao/:id_edicao')
   async obterCronograma(@Param('id_edicao', ParseIntPipe) idEdicao: number) {
     return this.atividadesService.obterCronogramaPorEdicao(idEdicao);
   }
 
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Associar ministrante a atividade (organizador/admin)' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('organizador', 'administrador')
   @Post('associar-ministrante')
   async associarMinistrante(@Body() dto: AssociarMinistranteDto) {
     return this.atividadesService.associarMinistrante(dto);
   }
 
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Inscrever participante em atividade' })
+  @UseGuards(JwtAuthGuard)
   @Post('inscrever')
   async inscrever(
     @Body() dto: InscreverAtividadeDto,
-    @Headers('x-usuario-id') usuarioIdHeader?: string,
-    @Req() req?: RequestWithUser,
+    @CurrentUser() usuario: UsuarioAutenticadoRequest,
   ) {
-    const rawId = usuarioIdHeader || req?.user?.id_usuario || req?.user?.sub;
-    const usuarioId = Number(rawId);
-
-    if (!usuarioId || Number.isNaN(usuarioId)) {
+    if (!usuario?.id_usuario) {
       throw new UnauthorizedException(
         'Identificador de usuario nao fornecido no contexto de autenticacao.',
       );
     }
 
-    return this.atividadesService.inscrever(usuarioId, dto);
+    return this.atividadesService.inscrever(usuario.id_usuario, dto);
   }
 
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Registrar chamada de presenca da atividade' })
   @UseGuards(JwtAuthGuard)
   @Post('chamada')
   async chamada(
-    @CurrentUser() usuario: { id_usuario: number },
+    @CurrentUser() usuario: UsuarioAutenticadoRequest,
     @Body() body: RegistrarPresencaDto | RegistrarPresencaItemDto[],
-    @Headers('x-usuario-id') usuarioIdHeader?: string,
-    @Req() req?: RequestWithUser,
   ) {
-    const rawId =
-      usuario?.id_usuario ||
-      usuarioIdHeader ||
-      req?.user?.id_usuario ||
-      req?.user?.sub;
-    const usuarioId = rawId ? Number(rawId) : undefined;
+    if (!usuario?.id_usuario) {
+      throw new UnauthorizedException(
+        'Identificador de usuario nao fornecido no contexto de autenticacao.',
+      );
+    }
     const itens = Array.isArray(body) ? body : body?.presencas;
 
-    return this.atividadesService.registrarChamada(itens, usuarioId);
+    return this.atividadesService.registrarChamada(itens, usuario.id_usuario);
   }
 }

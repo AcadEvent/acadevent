@@ -30,6 +30,7 @@ interface MockPrismaService {
   presenca: {
     createMany: jest.Mock;
   };
+  $transaction: jest.Mock;
 }
 
 describe('AtividadesService', () => {
@@ -38,6 +39,7 @@ describe('AtividadesService', () => {
 
   beforeEach(async () => {
     prisma = {
+      $transaction: jest.fn(async (cb: (tx: any) => Promise<any>) => cb(prisma)),
       atividade: {
         findUnique: jest.fn(),
       },

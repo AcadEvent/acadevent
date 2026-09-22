@@ -26,13 +26,21 @@ export class CriarEventoDto {
   @IsNotEmpty({ message: 'O titulo oficial da edicao e obrigatorio.' })
   titulo_oficial: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'secint2026',
-    description: 'Sigla ou slug identificador',
+    description: 'Sigla identificadora da edicao',
   })
   @IsString()
-  @IsNotEmpty({ message: 'A sigla e obrigatoria.' })
-  sigla: string;
+  @IsOptional()
+  sigla?: string;
+
+  @ApiPropertyOptional({
+    example: 'secint2026',
+    description: 'Slug identificador alternativo da edicao (compatibilidade com frontend)',
+  })
+  @IsString()
+  @IsOptional()
+  slug?: string;
 
   @ApiProperty({
     example: 'Faculdade de Computacao - FACOM',

@@ -52,8 +52,18 @@ const TRANSICOES_STATUS_VALIDAS: Record<string, string[]> = {
 export class EventosService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private anexarSlug<T extends { sigla?: string | null; id_edicao?: number }>(
+    edicao: T,
+  ): T & { slug: string } {
+    if (!edicao) return edicao as T & { slug: string };
+    return {
+      ...edicao,
+      slug: edicao.sigla || String(edicao.id_edicao),
+    };
+  }
+
   async listarPublicos() {
-    return this.prisma.edicao.findMany({
+    const edicoes = await this.prisma.edicao.findMany({
       where: {
         status_evento: {
           in: ['Publicado', 'Ativo'],
@@ -76,6 +86,7 @@ export class EventosService {
         data_abertura_evento: 'asc',
       },
     });
+    return edicoes.map((e) => this.anexarSlug(e));
   }
 
   async buscarPorSlug(slug: string) {
@@ -104,7 +115,7 @@ export class EventosService {
       );
     }
 
-    return edicao;
+    return this.anexarSlug(edicao);
   }
 
   async criarEvento(usuarioId: number, dto: CriarEventoDto) {
@@ -114,6 +125,13 @@ export class EventosService {
     ) {
       throw new BadRequestException(
         'A data de encerramento do evento deve ser posterior a data de abertura.',
+      );
+    }
+
+    const siglaFinal = (dto.sigla || dto.slug || '').trim().toLowerCase();
+    if (!siglaFinal) {
+      throw new BadRequestException(
+        'A sigla ou slug do evento deve ser informada.',
       );
     }
 
@@ -150,7 +168,7 @@ export class EventosService {
         data: {
           id_evento: evento.id_evento,
           titulo_oficial: dto.titulo_oficial,
-          sigla: dto.sigla.trim().toLowerCase(),
+          sigla: siglaFinal,
           unidade_promotora: dto.unidade_promotora,
           area_tematica: dto.area_tematica,
           descricao_geral: dto.descricao_geral,
@@ -162,7 +180,7 @@ export class EventosService {
         },
       });
 
-      return { evento, edicao };
+      return { evento, edicao: this.anexarSlug(edicao) };
     });
   }
 
@@ -175,7 +193,7 @@ export class EventosService {
       return [];
     }
 
-    return this.prisma.edicao.findMany({
+    const edicoes = await this.prisma.edicao.findMany({
       where: {
         evento: {
           id_organizador: perfilOrg.id_organizador,
@@ -194,6 +212,8 @@ export class EventosService {
         id_edicao: 'desc',
       },
     });
+
+    return edicoes.map((e) => this.anexarSlug(e));
   }
 
   async atualizarStatus(
@@ -268,9 +288,10 @@ export class EventosService {
       }
     }
 
-    return this.prisma.edicao.update({
+    const atualizado = await this.prisma.edicao.update({
       where: { id_edicao: idEdicao },
       data: { status_evento: dto.status },
     });
+    return this.anexarSlug(atualizado);
   }
 }
