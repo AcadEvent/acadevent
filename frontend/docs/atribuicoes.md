@@ -1,7 +1,7 @@
 # Atribuições do Frontend — AcadEvent
 
-Versão: 1.4
-Data: 2026-09-13
+Versão: 1.5
+Data: 2026-09-21
 Autor: Guilherme Zanan Piveta (SFE)
 Revisores: —
 
@@ -127,7 +127,7 @@ Atualize o status ao concluir. Legenda: ⬜ a fazer · 🟨 em andamento · ✅ 
 ### Kauan — autenticação e painel
 - ✅ `/login` · ✅ `/cadastro` · ⬜ `/recuperar-senha` · ⬜ `/redefinir-senha/[token]`
 - ✅ `/painel` · ⬜ `/painel/perfil` · ⬜ `/painel/notificacoes`
-- ⬜ `/painel/eventos/[slug]` (+ grade, inscricoes, recibos, certificados,
+- ✅ `/painel/eventos/[slug]` (visão geral) · ⬜ (+ grade, inscricoes, recibos, certificados,
   submissoes, submissoes/nova, atividades/[id]/materiais)
 - ⬜ ministrante (painel, perfil, presença, materiais, certificados) ·
   ⬜ escala (+ presenca) · ⬜ patrocinio
