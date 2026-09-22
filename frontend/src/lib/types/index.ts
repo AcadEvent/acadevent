@@ -11,3 +11,5 @@ export * from "./eventos";
 export * from "./inscricoes";
 export * from "./submissoes";
 export * from "./auth";
+export * from "./painel";
+
