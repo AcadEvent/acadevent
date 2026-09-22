@@ -29,6 +29,7 @@ services:
       DATABASE_URL: "postgresql://acadevent_admin:acadevent_local_pwd@postgres:5432/acadevent_db?schema=public"
       JWT_SECRET: "wNo91CHxxRSkca7F9xh2mLpiBpW0TVQmCeRVce4vyI3" # JWT Apenas para desenvolvimento, NÃO UTILIZAR EM PRODUÇÃO
       WEBHOOK_SECRET: "acadevent_webhook_dev_secret_key"
+      CORS_ORIGIN: "http://localhost:3001"
     depends_on:
       - postgres
     networks:

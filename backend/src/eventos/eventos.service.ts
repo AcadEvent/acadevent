@@ -48,17 +48,53 @@ const TRANSICOES_STATUS_VALIDAS: Record<string, string[]> = {
   Arquivado: [],
 };
 
+export function normalizarSlug(texto: string): string {
+  return texto
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+export function gerarSlugBase(
+  sigla?: string | null,
+  numeroEdicao?: string | null,
+  nome?: string | null,
+): string {
+  let base = '';
+  const siglaLimpa = sigla ? sigla.trim() : '';
+  const edicaoLimpa = numeroEdicao ? numeroEdicao.trim() : '';
+
+  if (siglaLimpa && edicaoLimpa) {
+    base = `${siglaLimpa}-${edicaoLimpa}`;
+  } else if (siglaLimpa) {
+    base = siglaLimpa;
+  } else if (nome && nome.trim()) {
+    base = nome.trim();
+  } else {
+    base = 'evento';
+  }
+
+  const normalizado = normalizarSlug(base);
+  return normalizado || 'evento';
+}
+
 @Injectable()
 export class EventosService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private anexarSlug<T extends { sigla?: string | null; id_edicao?: number }>(
-    edicao: T,
-  ): T & { slug: string } {
+  private anexarSlug<
+    T extends {
+      slug?: string | null;
+      sigla?: string | null;
+      id_edicao?: number;
+    },
+  >(edicao: T): T & { slug: string } {
     if (!edicao) return edicao as T & { slug: string };
     return {
       ...edicao,
-      slug: edicao.sigla || String(edicao.id_edicao),
+      slug: edicao.slug || edicao.sigla || String(edicao.id_edicao),
     };
   }
 
@@ -94,10 +130,20 @@ export class EventosService {
 
     let edicao = await this.prisma.edicao.findFirst({
       where: {
-        sigla: {
-          equals: slugLimpo,
-          mode: 'insensitive',
-        },
+        OR: [
+          {
+            slug: {
+              equals: slugLimpo,
+              mode: 'insensitive',
+            },
+          },
+          {
+            sigla: {
+              equals: slugLimpo,
+              mode: 'insensitive',
+            },
+          },
+        ],
       },
       include: DETALHES_EDICAO_INCLUDE,
     });
@@ -128,14 +174,35 @@ export class EventosService {
       );
     }
 
-    const siglaFinal = (dto.sigla || dto.slug || '').trim().toLowerCase();
-    if (!siglaFinal) {
-      throw new BadRequestException(
-        'A sigla ou slug do evento deve ser informada.',
-      );
-    }
+    const siglaPreservada = dto.sigla?.trim() || dto.slug?.trim() || null;
 
     return this.prisma.$transaction(async (tx) => {
+      let slugFinal: string;
+      if (dto.slug && dto.slug.trim()) {
+        slugFinal = normalizarSlug(dto.slug.trim());
+      } else {
+        const slugBase = gerarSlugBase(
+          dto.sigla,
+          dto.numero_edicao,
+          dto.titulo_oficial || dto.nome_marca,
+        );
+        slugFinal = slugBase;
+        let contador = 2;
+        while (
+          await tx.edicao.findFirst({
+            where: {
+              slug: {
+                equals: slugFinal,
+                mode: 'insensitive',
+              },
+            },
+          })
+        ) {
+          slugFinal = `${slugBase}-${contador}`;
+          contador++;
+        }
+      }
+
       let perfilOrg = await tx.perfilOrganizador.findUnique({
         where: { id_usuario: usuarioId },
       });
@@ -168,7 +235,9 @@ export class EventosService {
         data: {
           id_evento: evento.id_evento,
           titulo_oficial: dto.titulo_oficial,
-          sigla: siglaFinal,
+          numero_edicao: dto.numero_edicao ? dto.numero_edicao.trim() : null,
+          sigla: siglaPreservada,
+          slug: slugFinal,
           unidade_promotora: dto.unidade_promotora,
           area_tematica: dto.area_tematica,
           descricao_geral: dto.descricao_geral,

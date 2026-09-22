@@ -114,32 +114,64 @@ describe('EventosService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('deve criar evento e edicao com sucesso via transacao', async () => {
+    it('deve criar evento gerando slug conforme Contrato v1 (sigla original preservada e slug kebab-case)', async () => {
       mockPrismaService.perfilOrganizador.findUnique.mockResolvedValue({
         id_organizador: 10,
       });
       mockPrismaService.evento.create.mockResolvedValue({
         id_evento: 1,
-        nome_marca: 'Semana Tech',
+        nome_marca: 'Simposio de TI',
       });
-      mockPrismaService.edicao.create.mockResolvedValue({
+      mockPrismaService.edicao.findFirst.mockResolvedValue(null);
+      mockPrismaService.edicao.create.mockImplementation((args) => ({
         id_edicao: 1,
-        titulo_oficial: 'Semana Tech 2026',
-        sigla: 'tech2026',
-      });
+        ...args.data,
+      }));
 
       const resultado = await service.criarEvento(1, {
-        nome_marca: 'Semana Tech',
-        titulo_oficial: 'Semana Tech 2026',
-        sigla: 'tech2026',
+        nome_marca: 'Simposio de TI',
+        titulo_oficial: 'Simposio de TI 2026',
+        sigla: 'SITC',
+        numero_edicao: '2026',
         unidade_promotora: 'FACOM',
         data_abertura_evento: new Date('2026-10-10'),
         data_encerramento_evento: new Date('2026-10-12'),
       });
 
       expect(resultado).toBeDefined();
-      expect(resultado.edicao.sigla).toBe('tech2026');
-      expect(resultado.edicao.slug).toBe('tech2026');
+      expect(resultado.edicao.sigla).toBe('SITC');
+      expect(resultado.edicao.slug).toBe('sitc-2026');
+      expect(resultado.edicao.numero_edicao).toBe('2026');
+    });
+
+    it('deve adicionar sufixo -2 se o slug gerado ja existir no banco', async () => {
+      mockPrismaService.perfilOrganizador.findUnique.mockResolvedValue({
+        id_organizador: 10,
+      });
+      mockPrismaService.evento.create.mockResolvedValue({
+        id_evento: 2,
+        nome_marca: 'Simposio de TI',
+      });
+      mockPrismaService.edicao.findFirst
+        .mockResolvedValueOnce({ id_edicao: 1, slug: 'sitc-2026' })
+        .mockResolvedValueOnce(null);
+      mockPrismaService.edicao.create.mockImplementation((args) => ({
+        id_edicao: 2,
+        ...args.data,
+      }));
+
+      const resultado = await service.criarEvento(1, {
+        nome_marca: 'Simposio de TI',
+        titulo_oficial: 'Simposio de TI 2026',
+        sigla: 'SITC',
+        numero_edicao: '2026',
+        unidade_promotora: 'FACOM',
+        data_abertura_evento: new Date('2026-10-10'),
+        data_encerramento_evento: new Date('2026-10-12'),
+      });
+
+      expect(resultado).toBeDefined();
+      expect(resultado.edicao.slug).toBe('sitc-2026-2');
     });
 
     it('deve aceitar slug quando sigla nao for explicitamente informada', async () => {
@@ -147,13 +179,14 @@ describe('EventosService', () => {
         id_organizador: 10,
       });
       mockPrismaService.evento.create.mockResolvedValue({
-        id_evento: 2,
+        id_evento: 3,
         nome_marca: 'Semana Tech 2',
       });
       mockPrismaService.edicao.create.mockImplementation((args) => ({
-        id_edicao: 2,
+        id_edicao: 3,
         titulo_oficial: 'Semana Tech 2027',
         sigla: args.data.sigla,
+        slug: args.data.slug,
       }));
 
       const resultado = await service.criarEvento(1, {

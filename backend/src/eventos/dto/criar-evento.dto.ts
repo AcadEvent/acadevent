@@ -27,6 +27,14 @@ export class CriarEventoDto {
   titulo_oficial: string;
 
   @ApiPropertyOptional({
+    example: '2026',
+    description: 'Numero ou ano identificador da edicao',
+  })
+  @IsString()
+  @IsOptional()
+  numero_edicao?: string;
+
+  @ApiPropertyOptional({
     example: 'secint2026',
     description: 'Sigla identificadora da edicao',
   })

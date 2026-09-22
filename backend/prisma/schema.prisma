@@ -133,6 +133,7 @@ model Edicao {
   titulo_oficial               String                      @db.VarChar(255)
   numero_edicao                String?                     @db.VarChar(50)
   sigla                        String?                     @db.VarChar(50)
+  slug                         String?                     @unique @db.VarChar(150)
   unidade_promotora            String?                     @db.VarChar(255)
   area_tematica                String?                     @db.VarChar(150)
   descricao_geral              String?                     @db.Text
