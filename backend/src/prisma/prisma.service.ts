@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -8,14 +9,16 @@ export class PrismaService
   extends PrismaClient
   implements OnModuleInit, OnModuleDestroy
 {
+  readonly pool: Pool;
+
   constructor() {
-    const connectionString = process.env.DATABASE_URL;
-    if (!connectionString) {
-      throw new Error('DATABASE_URL is not set');
-    }
+    const connectionString =
+      process.env.DATABASE_URL ||
+      'postgresql://acadevent_admin:acadevent_local_pwd@localhost:5432/acadevent_db?schema=public';
     const pool = new Pool({ connectionString });
-    const adapter = new PrismaPg(pool);
+    const adapter = new PrismaPg(pool, { disposeExternalPool: true });
     super({ adapter });
+    this.pool = pool;
   }
 
   async onModuleInit() {
@@ -24,5 +27,8 @@ export class PrismaService
 
   async onModuleDestroy() {
     await this.$disconnect();
+    if (!this.pool.ending && !this.pool.ended) {
+      await this.pool.end();
+    }
   }
 }

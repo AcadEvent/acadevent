@@ -17,6 +17,7 @@ out/
 # Logs do sistema
 *.log
 logs/
+!backend/src/logs/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -38,3 +39,10 @@ pgdata/
 # Arquivos do sistema operacional
 .DS_Store
 Thumbs.db
+
+# agents
+AGENTS.md
+.agents/
+skills-lock.json
+CLAUDE.md
+GEMINI.md

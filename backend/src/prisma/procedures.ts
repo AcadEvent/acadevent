@@ -7,7 +7,9 @@ import type {
 } from '@prisma/client';
 import { queryProcedure } from './map-procedure-error';
 
-type Tx = Prisma.TransactionClient | { $queryRaw: Prisma.TransactionClient['$queryRaw'] };
+type Tx =
+  | Prisma.TransactionClient
+  | { $queryRaw: Prisma.TransactionClient['$queryRaw'] };
 
 export type AvaliacaoTrabalhoRow = {
   id_avaliacao: number;

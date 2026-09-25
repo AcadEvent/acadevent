@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -40,7 +41,7 @@ export class InventarioService {
     });
   }
 
-  async retirarItem(dto: RetirarItemDto) {
+  async retirarItem(dto: RetirarItemDto, idUsuario: number) {
     const item = await this.prisma.itemInventarioFisico.findUnique({
       where: { id_item: dto.id_item },
     });
@@ -50,11 +51,22 @@ export class InventarioService {
     }
 
     const organizador = await this.prisma.perfilOrganizador.findUnique({
-      where: { id_organizador: dto.id_organizador },
+      where: { id_usuario: idUsuario },
     });
 
     if (!organizador) {
-      throw new NotFoundException('Perfil de organizador responsavel nao encontrado.');
+      throw new ForbiddenException(
+        'Usuario autenticado nao possui perfil de organizador.',
+      );
+    }
+
+    if (
+      dto.id_organizador !== undefined &&
+      dto.id_organizador !== organizador.id_organizador
+    ) {
+      throw new ForbiddenException(
+        'Nao e permitido registrar retirada em nome de outro organizador.',
+      );
     }
 
     if (dto.id_ministrante) {
@@ -69,7 +81,7 @@ export class InventarioService {
     return this.prisma.$transaction(async (tx) => {
       const registro = await spRetirarInventario(tx, {
         id_item: dto.id_item,
-        id_organizador: dto.id_organizador,
+        id_organizador: organizador.id_organizador,
         quantidade: dto.quantidade_retirada,
         id_ministrante: dto.id_ministrante || null,
       });
@@ -101,19 +113,32 @@ export class InventarioService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      const registroAtualizado = await tx.registroInventario.update({
-        where: { id_registro_item: idRegistroItem },
+      const atualizados = await tx.registroInventario.updateMany({
+        where: {
+          id_registro_item: idRegistroItem,
+          status: 'Retirado',
+        },
         data: {
           data_entrega: new Date(),
           status: 'Devolvido',
         },
       });
 
+      if (atualizados.count === 0) {
+        throw new BadRequestException(
+          'Este item ja consta como devolvido no sistema.',
+        );
+      }
+
       const itemAtualizado = await tx.itemInventarioFisico.update({
         where: { id_item: registro.id_item },
         data: {
           quantidade_disponivel: { increment: registro.quantidade_retirada },
         },
+      });
+
+      const registroAtualizado = await tx.registroInventario.findUnique({
+        where: { id_registro_item: idRegistroItem },
       });
 
       return {

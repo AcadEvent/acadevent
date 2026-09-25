@@ -8,7 +8,10 @@ import {
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { InscreverAtividadeDto } from './dto/inscrever-atividade.dto';
-import { RegistrarPresencaItemDto } from './dto/registrar-presenca.dto';
+import {
+  RegistrarPresencaDto,
+  RegistrarPresencaItemDto,
+} from './dto/registrar-presenca.dto';
 import { CriarAtividadeDto } from './dto/criar-atividade.dto';
 import { AssociarMinistranteDto } from './dto/associar-ministrante.dto';
 
@@ -132,15 +135,18 @@ export class AtividadesService {
       );
     }
 
-    const inscricaoAtividadeExistente = await this.prisma.inscricaoAtividade.findFirst({
-      where: {
-        id_inscricao_edicao: inscricaoEdicao.id_inscricao_edicao,
-        id_atividade: dto.id_atividade,
-      },
-    });
+    const inscricaoAtividadeExistente =
+      await this.prisma.inscricaoAtividade.findFirst({
+        where: {
+          id_inscricao_edicao: inscricaoEdicao.id_inscricao_edicao,
+          id_atividade: dto.id_atividade,
+        },
+      });
 
     if (inscricaoAtividadeExistente) {
-      throw new BadRequestException('Participante ja inscrito nesta atividade.');
+      throw new BadRequestException(
+        'Participante ja inscrito nesta atividade.',
+      );
     }
 
     const reservaAtual = atividade.reservas[0];
@@ -148,6 +154,7 @@ export class AtividadesService {
       const outrasInscricoes = await this.prisma.inscricaoAtividade.findMany({
         where: {
           id_inscricao_edicao: inscricaoEdicao.id_inscricao_edicao,
+          status: { not: 'Cancelada' },
         },
         include: {
           atividade: {
@@ -159,6 +166,9 @@ export class AtividadesService {
       });
 
       for (const item of outrasInscricoes) {
+        if (item.status === 'Cancelada') {
+          continue;
+        }
         for (const res of item.atividade.reservas) {
           if (res.data_inicio && res.data_final) {
             if (
@@ -174,31 +184,39 @@ export class AtividadesService {
       }
     }
 
-    const inscritosAtuais = await this.prisma.inscricaoAtividade.count({
-      where: {
-        id_atividade: dto.id_atividade,
-      },
-    });
+    return this.prisma.$transaction(async (tx) => {
+      const inscritosAtuais = await tx.inscricaoAtividade.count({
+        where: {
+          id_atividade: dto.id_atividade,
+          status: { not: 'Cancelada' },
+        },
+      });
 
-    if (reservaAtual && reservaAtual.espaco) {
-      const capacidadeMax = reservaAtual.espaco.capacidade_max;
-      if (inscritosAtuais >= capacidadeMax) {
-        throw new BadRequestException(
-          'Lotacao maxima do espaco fisico atingida.',
-        );
+      if (reservaAtual && reservaAtual.espaco) {
+        const capacidadeMax = reservaAtual.espaco.capacidade_max;
+        if (inscritosAtuais >= capacidadeMax) {
+          throw new BadRequestException(
+            'Lotacao maxima do espaco fisico atingida.',
+          );
+        }
       }
-    }
 
-    return this.prisma.inscricaoAtividade.create({
-      data: {
-        id_inscricao_edicao: inscricaoEdicao.id_inscricao_edicao,
-        id_atividade: dto.id_atividade,
-        status: 'Inscrito',
-      },
+      return tx.inscricaoAtividade.create({
+        data: {
+          id_inscricao_edicao: inscricaoEdicao.id_inscricao_edicao,
+          id_atividade: dto.id_atividade,
+          status: 'Inscrito',
+        },
+      });
     });
   }
 
-  async registrarChamada(itens: RegistrarPresencaItemDto[], usuarioId?: number) {
+  async registrarChamada(
+    dados: RegistrarPresencaItemDto[] | RegistrarPresencaDto,
+    usuarioId?: number,
+  ) {
+    const itens = Array.isArray(dados) ? dados : dados?.presencas;
+
     if (!itens || itens.length === 0) {
       throw new BadRequestException(
         'A lista de chamadas nao pode estar vazia.',

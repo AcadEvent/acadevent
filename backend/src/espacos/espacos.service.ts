@@ -58,10 +58,56 @@ export class EspacosService {
 
     const atividade = await this.prisma.atividade.findUnique({
       where: { id_atividade: dto.id_atividade },
+      include: { edicao: true },
     });
 
     if (!atividade) {
       throw new NotFoundException('Atividade nao encontrada.');
+    }
+
+    if (espaco.id_edicao !== atividade.id_edicao) {
+      throw new BadRequestException(
+        'O espaco fisico e a atividade devem pertencer a mesma edicao do evento.',
+      );
+    }
+
+    const inicioReserva = new Date(dto.data_inicio);
+    const fimReserva = new Date(dto.data_final);
+
+    if (
+      atividade.data_abertura_atividade &&
+      inicioReserva < new Date(atividade.data_abertura_atividade)
+    ) {
+      throw new BadRequestException(
+        'O horario da reserva nao pode iniciar antes do inicio da atividade.',
+      );
+    }
+
+    if (
+      atividade.data_encerramento_atividade &&
+      fimReserva > new Date(atividade.data_encerramento_atividade)
+    ) {
+      throw new BadRequestException(
+        'O horario da reserva nao pode encerrar apos o termino da atividade.',
+      );
+    }
+
+    if (
+      atividade.edicao?.data_abertura_evento &&
+      inicioReserva < new Date(atividade.edicao.data_abertura_evento)
+    ) {
+      throw new BadRequestException(
+        'O horario da reserva nao pode iniciar antes da abertura do evento.',
+      );
+    }
+
+    if (
+      atividade.edicao?.data_encerramento_evento &&
+      fimReserva > new Date(atividade.edicao.data_encerramento_evento)
+    ) {
+      throw new BadRequestException(
+        'O horario da reserva nao pode encerrar apos o encerramento do evento.',
+      );
     }
 
     return this.prisma.$transaction(async (tx) =>
