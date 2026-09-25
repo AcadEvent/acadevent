@@ -17,7 +17,7 @@ Este documento descreve as implementacoes realizadas pela **Squad Backbone (SBE)
 - **`storage` (RF10 / RNF05.4)**: Padrao Adapter com `StorageServiceBase` e `LocalStorageService`, permitindo salvar arquivos multipart em disco e servi-los por URL relativa (`POST /storage/upload`, `GET /storage/arquivos/:subpasta/:nome`).
 - **`certificados` (RF11.5)**: Motor de renderizacao dinamica em PDF com PDFKit no formato A4 Paisagem com moldura grafica institucional, dados do participante/evento e codigo unico de autenticidade (`GET /certificados/:codigo/download`), alem de validacao publica (`GET /certificados/:codigo/validar`).
 - **`comunicacao` (RF09)**: Disparo de comunicados para participantes do evento ou de atividades especificas (`POST /comunicacao/enviar`), com historico (`GET /comunicacao/edicao/:id`).
-- **`logs` (RF16)**: Interceptor global assincrono (`LoggingInterceptor`) auditando requisicoes HTTP mutatorias, e consulta restrita a administradores (`GET /admin/logs`).
+- **`logs` (RF16)**: Interceptor global assincrono (`LoggingInterceptor`) auditando requisicoes HTTP mutatorias, e consulta restrita a administradores (`GET /admin/logs`). No Marco P3, opera via buffer circular em memoria assincrono (`setImmediate`); no Marco P4, sera desacoplado via Adapter para persistencia externa NoSQL (MongoDB / Redis).
 - **OpenAPI / Swagger e CORS (RF14)**: Configurados no `main.ts`, com Swagger interativo em `/api/docs` e suporte a Bearer Token.
 
 ---
