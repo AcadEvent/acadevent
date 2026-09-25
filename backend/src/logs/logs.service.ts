@@ -11,33 +11,44 @@ export interface RegistroLog {
   usuario_id?: number;
 }
 
+/**
+ * [RF16.1 / RF16.2 / Arquitetura]: No Marco P3, o armazenamento de auditoria opera via
+ * buffer circular em memória assíncrono (não-bloqueante via setImmediate) para prototipação
+ * e validação de requisitos sem introdução de dependências de infraestrutura NoSQL. No Marco
+ * P4, esta classe será desacoplada via Adapter para persistência externa (MongoDB ou Redis Stream/Document).
+ */
 @Injectable()
 export class LogsService {
   private readonly logger = new Logger(LogsService.name);
   private readonly logs: RegistroLog[] = [];
   private readonly maxLogs = 500;
 
-  async registrarAssincrono(logData: Omit<RegistroLog, 'id_log'>): Promise<void> {
+  registrarAssincrono(logData: Omit<RegistroLog, 'id_log'>): Promise<void> {
     // Processamento assincrono nao-bloqueante
     setImmediate(() => {
-      const id = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
-      const novoRegistro: RegistroLog = {
-        id_log: id,
-        ...logData,
-      };
+      try {
+        const id = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+        const novoRegistro: RegistroLog = {
+          id_log: id,
+          ...logData,
+        };
 
-      this.logs.unshift(novoRegistro);
-      if (this.logs.length > this.maxLogs) {
-        this.logs.pop();
+        this.logs.unshift(novoRegistro);
+        if (this.logs.length > this.maxLogs) {
+          this.logs.pop();
+        }
+
+        this.logger.log(
+          `[AUDIT] ${novoRegistro.metodo} ${novoRegistro.url} - Status: ${novoRegistro.status_code} (${novoRegistro.duracao_ms}ms)`,
+        );
+      } catch (error) {
+        this.logger.error('Falha ao processar log assincrono', error);
       }
-
-      this.logger.log(
-        `[AUDIT] ${novoRegistro.metodo} ${novoRegistro.url} - Status: ${novoRegistro.status_code} (${novoRegistro.duracao_ms}ms)`,
-      );
     });
+    return Promise.resolve();
   }
 
-  async listarRecentes(limite = 100): Promise<RegistroLog[]> {
-    return this.logs.slice(0, limite);
+  listarRecentes(limite = 100): Promise<RegistroLog[]> {
+    return Promise.resolve(this.logs.slice(0, limite));
   }
 }
