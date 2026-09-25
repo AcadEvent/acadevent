@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 import { App } from 'supertest/types';
 
@@ -10,6 +11,15 @@ import { AppModule } from './../src/app.module';
 
 describe('Security & Access Control (e2e)', () => {
   let app: INestApplication<App>;
+  let jwtService: JwtService;
+
+  const gerarToken = (perfis: string[]) =>
+    jwtService.sign({
+      sub: 1,
+      email: 'admin@acadevent.edu.br',
+      nome: 'Usuario Teste',
+      perfis,
+    });
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -17,6 +27,14 @@ describe('Security & Access Control (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.useGlobalPipes(
+      new ValidationPipe({
+        transform: true,
+        whitelist: true,
+        forbidNonWhitelisted: true,
+      }),
+    );
+    jwtService = app.get(JwtService);
     await app.init();
   });
 
@@ -100,6 +118,48 @@ describe('Security & Access Control (e2e)', () => {
 
     it('deve rejeitar consulta a logs administrativos sem autenticacao com 401 Unauthorized', () => {
       return request(app.getHttpServer()).get('/admin/logs').expect(401);
+    });
+
+    it('deve rejeitar consulta a logs administrativos com perfil participante com 403 Forbidden', () => {
+      return request(app.getHttpServer())
+        .get('/admin/logs')
+        .set('Authorization', `Bearer ${gerarToken(['participante'])}`)
+        .expect(403);
+    });
+
+    it('deve permitir consulta a logs administrativos com perfil administrador com 200 OK', () => {
+      return request(app.getHttpServer())
+        .get('/admin/logs')
+        .set('Authorization', `Bearer ${gerarToken(['administrador'])}`)
+        .expect(200);
+    });
+
+    it('deve rejeitar consulta a logs com limite zero com 400 Bad Request', () => {
+      return request(app.getHttpServer())
+        .get('/admin/logs?limite=0')
+        .set('Authorization', `Bearer ${gerarToken(['administrador'])}`)
+        .expect(400);
+    });
+
+    it('deve rejeitar consulta a logs com limite excedendo 500 com 400 Bad Request', () => {
+      return request(app.getHttpServer())
+        .get('/admin/logs?limite=999')
+        .set('Authorization', `Bearer ${gerarToken(['administrador'])}`)
+        .expect(400);
+    });
+
+    it('deve rejeitar consulta a logs com limite nao numerico com 400 Bad Request', () => {
+      return request(app.getHttpServer())
+        .get('/admin/logs?limite=abc')
+        .set('Authorization', `Bearer ${gerarToken(['administrador'])}`)
+        .expect(400);
+    });
+
+    it('deve permitir consulta a logs com limite valido com 200 OK', () => {
+      return request(app.getHttpServer())
+        .get('/admin/logs?limite=50')
+        .set('Authorization', `Bearer ${gerarToken(['administrador'])}`)
+        .expect(200);
     });
   });
 });
