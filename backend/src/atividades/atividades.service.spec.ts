@@ -39,7 +39,9 @@ describe('AtividadesService', () => {
 
   beforeEach(async () => {
     prisma = {
-      $transaction: jest.fn(async (cb: (tx: any) => Promise<any>) => cb(prisma)),
+      $transaction: jest.fn(
+        async (cb: (tx: any) => Promise<unknown>) => await cb(prisma),
+      ),
       atividade: {
         findUnique: jest.fn(),
       },

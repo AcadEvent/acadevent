@@ -46,7 +46,9 @@ export class AtividadesController {
   }
 
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Associar ministrante a atividade (organizador/admin)' })
+  @ApiOperation({
+    summary: 'Associar ministrante a atividade (organizador/admin)',
+  })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('organizador', 'administrador')
   @Post('associar-ministrante')

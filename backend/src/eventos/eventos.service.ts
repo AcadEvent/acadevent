@@ -91,7 +91,7 @@ export class EventosService {
       id_edicao?: number;
     },
   >(edicao: T): T & { slug: string } {
-    if (!edicao) return edicao as T & { slug: string };
+    if (!edicao) return edicao;
     return {
       ...edicao,
       slug: edicao.slug || edicao.sigla || String(edicao.id_edicao),

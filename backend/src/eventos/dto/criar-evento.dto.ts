@@ -44,7 +44,8 @@ export class CriarEventoDto {
 
   @ApiPropertyOptional({
     example: 'secint2026',
-    description: 'Slug identificador alternativo da edicao (compatibilidade com frontend)',
+    description:
+      'Slug identificador alternativo da edicao (compatibilidade com frontend)',
   })
   @IsString()
   @IsOptional()

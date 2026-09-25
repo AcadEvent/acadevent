@@ -344,9 +344,9 @@ describe('Pagamentos (Controller & Service)', () => {
       expect(
         relatorio.resumo_financeiro.receita_total_confirmada.toString(),
       ).toBe('100');
-      expect(
-        relatorio.resumo_financeiro.valor_total_pendente.toString(),
-      ).toBe('50');
+      expect(relatorio.resumo_financeiro.valor_total_pendente.toString()).toBe(
+        '50',
+      );
     });
   });
 });
