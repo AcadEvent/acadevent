@@ -389,7 +389,7 @@ function DashboardContent({ dashboard }: { dashboard: DashboardEvento }) {
 }
 
 export default function DashboardOrganizadorPage() {
-  const { slug } = useParams<{ slug: string }>();
+  const { slug } = useParams<{ slug: string }>() ?? { slug: "" };
   const [dashboard, setDashboard] = useState<DashboardEvento | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(false);
