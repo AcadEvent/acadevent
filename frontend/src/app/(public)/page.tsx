@@ -23,6 +23,7 @@ import Section from "@/components/layout/Section";
 import EventCard from "@/components/domain/EventCard";
 import EmptyState from "@/components/ui/EmptyState";
 import { getEventosPublicados } from "@/lib/api";
+import type { Evento } from "@/lib/types";
 
 const COMO_FUNCIONA = [
   {
@@ -43,7 +44,13 @@ const COMO_FUNCIONA = [
 ];
 
 export default async function LandingPage() {
-  const eventos = await getEventosPublicados();
+  let eventos: Evento[] = [];
+  try {
+    eventos = await getEventosPublicados();
+  } catch {
+    // API indisponível: a landing continua útil (hero, "como funciona"),
+    // apenas sem a vitrine de eventos.
+  }
 
   return (
     <>

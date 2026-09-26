@@ -10,6 +10,8 @@
  *
  * Página de referência (real) — segunda amostra do padrão, agora de listagem.
  */
+import Alert from "@mui/material/Alert";
+import AlertTitle from "@mui/material/AlertTitle";
 import Container from "@mui/material/Container";
 import Grid from "@mui/material/Grid";
 import Box from "@mui/material/Box";
@@ -21,6 +23,7 @@ import PageHeader from "@/components/layout/PageHeader";
 import EventCard from "@/components/domain/EventCard";
 import EmptyState from "@/components/ui/EmptyState";
 import { getEventosPublicados } from "@/lib/api";
+import type { Evento } from "@/lib/types";
 
 export default async function EventosPage({
   searchParams,
@@ -30,7 +33,13 @@ export default async function EventosPage({
   const { q } = await searchParams;
   const termo = (q ?? "").trim().toLowerCase();
 
-  const todos = await getEventosPublicados();
+  let todos: Evento[] = [];
+  let erro = false;
+  try {
+    todos = await getEventosPublicados();
+  } catch {
+    erro = true;
+  }
   const eventos = termo
     ? todos.filter((e) =>
         [e.nome, e.sigla, e.areaTematica, e.instituicao]
@@ -64,7 +73,12 @@ export default async function EventosPage({
         />
       </Box>
 
-      {eventos.length === 0 ? (
+      {erro ? (
+        <Alert severity="error">
+          <AlertTitle>Não foi possível carregar os eventos</AlertTitle>
+          Tente novamente em instantes.
+        </Alert>
+      ) : eventos.length === 0 ? (
         <EmptyState
           title="Nenhum evento encontrado"
           description={
