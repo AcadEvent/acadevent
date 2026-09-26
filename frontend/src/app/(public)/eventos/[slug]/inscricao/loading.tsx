@@ -5,8 +5,8 @@ import Stack from "@mui/material/Stack";
 
 /**
  * Loading do passo 1 da inscrição. O app/loading.tsx global é só um spinner —
- * aqui o esqueleto espelha o layout real (cabeçalho, stepper, formulário e
- * resumo), como pede o comentário do loading.tsx da raiz.
+ * aqui o esqueleto espelha o layout real (cabeçalho, stepper, cartão de revisão/
+ * aceite e resumo), como pede o comentário do loading.tsx da raiz.
  */
 export default function Loading() {
   return (
@@ -17,7 +17,7 @@ export default function Loading() {
 
       <Grid container spacing={4}>
         <Grid size={{ xs: 12, md: 7 }}>
-          <Skeleton variant="rounded" height={520} />
+          <Skeleton variant="rounded" height={260} />
         </Grid>
         <Grid size={{ xs: 12, md: 5 }}>
           <Stack spacing={3}>

@@ -2,9 +2,9 @@
  * ROTA: /eventos/[slug]/inscricao
  * OWNER: Igor   RF: RF01.5.3, RNF04.4   PRIORIDADE: MVP
  * PROPÓSITO: Passo 1 do fluxo de inscrição em rota única (Stepper, ≤5 passos):
- *   confirma os dados do participante e encaminha para a seleção de atividades.
- *   Requer autenticação (sessão checada na página).
- * COMPONENTES: Container, PageHeader, Stepper, Card, Chip, InscricaoForm (local)
+ *   revisa evento/ingresso, coleta o aceite dos termos e encaminha para as
+ *   atividades. A identidade do participante vem da conta (sem form cadastral).
+ * COMPONENTES: Container, PageHeader, Stepper, Card, Chip, IniciarInscricao (local)
  * DADOS: getEvento(slug), getLotes(slug) (via src/lib/api — nunca fetch direto)
  * ESTADOS: loading (Skeleton, em ./loading.tsx) / vazio (EmptyState) / erro (Alert)
  * DONE: responsivo, usa tokens do tema (sem cor hardcoded), estados cobertos,
@@ -37,7 +37,7 @@ import { getEvento, getLotes } from "@/lib/api";
 import { getSession } from "@/lib/auth/session";
 import type { Evento, LoteIngresso, StatusInscricao } from "@/lib/types";
 
-import InscricaoForm from "./InscricaoForm";
+import IniciarInscricao from "./IniciarInscricao";
 import { AUTH_ENABLED, BLOQUEIO, PASSOS } from "./wizard";
 
 const INSCRICAO_LABEL: Record<StatusInscricao, string> = {
@@ -236,12 +236,11 @@ export default async function InscricaoPage({
       )}
 
       <Grid container spacing={4}>
-        {/* Passo 1 — dados do participante */}
+        {/* Passo 1 — revisão e aceite dos termos */}
         <Grid size={{ xs: 12, md: 7 }}>
-          <InscricaoForm
+          <IniciarInscricao
             eventoSlug={evento.slug}
             bloqueado={Boolean(bloqueio)}
-            nomePadrao={sessao?.nome ?? ""}
           />
         </Grid>
 
