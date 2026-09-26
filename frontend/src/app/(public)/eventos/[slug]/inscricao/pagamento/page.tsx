@@ -32,10 +32,9 @@ import {
   getEvento,
   getLotes,
 } from "@/lib/api";
-import { getSession } from "@/lib/auth/session";
 import type { Atividade, Evento, LoteIngresso } from "@/lib/types";
 
-import { AUTH_ENABLED, BLOQUEIO, PASSOS } from "../wizard";
+import { BLOQUEIO, PASSOS } from "../wizard";
 import PagamentoForm from "./PagamentoForm";
 
 export async function generateMetadata({
@@ -95,29 +94,6 @@ export default async function InscricaoPagamentoPage({
             </Button>
           }
         />
-      </Container>
-    );
-  }
-
-  const sessao = await getSession();
-  if (AUTH_ENABLED && !sessao) {
-    return (
-      <Container maxWidth="sm" sx={{ py: { xs: 6, md: 10 } }}>
-        <Alert
-          severity="info"
-          action={
-            <Button
-              color="inherit"
-              size="small"
-              href={`/login?redirect=/eventos/${slug}/inscricao`}
-            >
-              Entrar
-            </Button>
-          }
-        >
-          <AlertTitle>Entre para se inscrever</AlertTitle>
-          É preciso estar autenticado para concluir a inscrição em {evento.nome}.
-        </Alert>
       </Container>
     );
   }
