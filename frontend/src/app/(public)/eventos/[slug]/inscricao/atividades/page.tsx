@@ -36,10 +36,9 @@ import PlaceIcon from "@mui/icons-material/Place";
 import EmptyState from "@/components/ui/EmptyState";
 import PageHeader from "@/components/layout/PageHeader";
 import { getAtividades, getEvento, getMinistrantes } from "@/lib/api";
-import { getSession } from "@/lib/auth/session";
 import type { Atividade, Evento, Ministrante } from "@/lib/types";
 
-import { AUTH_ENABLED, BLOQUEIO, PASSOS } from "../wizard";
+import { BLOQUEIO, PASSOS } from "../wizard";
 import AtividadesForm from "./AtividadesForm";
 
 const dataFmt = new Intl.DateTimeFormat("pt-BR", {
@@ -106,30 +105,6 @@ export default async function InscricaoAtividadesPage({
             </Button>
           }
         />
-      </Container>
-    );
-  }
-
-  const sessao = await getSession();
-  if (AUTH_ENABLED && !sessao) {
-    return (
-      <Container maxWidth="sm" sx={{ py: { xs: 6, md: 10 } }}>
-        <Alert
-          severity="info"
-          action={
-            <Button
-              color="inherit"
-              size="small"
-              href={`/login?redirect=/eventos/${slug}/inscricao/atividades`}
-            >
-              Entrar
-            </Button>
-          }
-        >
-          <AlertTitle>Entre para se inscrever</AlertTitle>
-          É preciso estar autenticado para escolher as atividades de{" "}
-          {evento.nome}.
-        </Alert>
       </Container>
     );
   }

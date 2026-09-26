@@ -34,11 +34,10 @@ import PlaceIcon from "@mui/icons-material/Place";
 import EmptyState from "@/components/ui/EmptyState";
 import PageHeader from "@/components/layout/PageHeader";
 import { getEvento, getLotes } from "@/lib/api";
-import { getSession } from "@/lib/auth/session";
 import type { Evento, LoteIngresso, StatusInscricao } from "@/lib/types";
 
 import IniciarInscricao from "./IniciarInscricao";
-import { AUTH_ENABLED, BLOQUEIO, PASSOS } from "./wizard";
+import { BLOQUEIO, PASSOS } from "./wizard";
 
 const INSCRICAO_LABEL: Record<StatusInscricao, string> = {
   abertas: "Inscrições abertas",
@@ -152,29 +151,6 @@ export default async function InscricaoPage({
             </Button>
           }
         />
-      </Container>
-    );
-  }
-
-  const sessao = await getSession();
-  if (AUTH_ENABLED && !sessao) {
-    return (
-      <Container maxWidth="sm" sx={{ py: { xs: 6, md: 10 } }}>
-        <Alert
-          severity="info"
-          action={
-            <Button
-              color="inherit"
-              size="small"
-              href={`/login?redirect=/eventos/${slug}/inscricao`}
-            >
-              Entrar
-            </Button>
-          }
-        >
-          <AlertTitle>Entre para se inscrever</AlertTitle>
-          É preciso estar autenticado para se inscrever em {evento.nome}.
-        </Alert>
       </Container>
     );
   }
