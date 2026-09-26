@@ -170,3 +170,32 @@ export async function criarInscricao(
 export function getInscricao(id: string): Promise<InscricaoEdicao | null> {
   return fake(mockInscricoes.find((i) => i.id === id) ?? null);
 }
+
+// ── Gestão (organizador) ──────────────────────────────────────────────────────
+
+/** Inscrições de um evento, mais recentes primeiro (RF04.1). */
+export function getInscricoesDoEvento(
+  eventoSlug: string,
+): Promise<InscricaoEdicao[]> {
+  return fake(
+    mockInscricoes
+      .filter((i) => i.eventoSlug === eventoSlug)
+      .sort((a, b) => b.criadaEm.localeCompare(a.criadaEm)),
+  );
+}
+
+/**
+ * Confirmação manual de pagamento pelo organizador (RF04.5). Só faz efeito sobre
+ * inscrições pendentes; devolve a inscrição atualizada.
+ */
+export function confirmarPagamento(id: string): Promise<InscricaoEdicao> {
+  const inscricao = mockInscricoes.find((i) => i.id === id);
+  if (!inscricao) {
+    throw new Error("Inscrição não encontrada.");
+  }
+  if (inscricao.statusPagamento === "pendente") {
+    inscricao.statusPagamento = "confirmado";
+    inscricao.pagaEm = new Date().toISOString();
+  }
+  return fake(inscricao);
+}
