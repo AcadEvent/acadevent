@@ -193,8 +193,11 @@ export default function NovoEventoForm() {
       local: dados.local,
       logoUrl: dados.logoUrl,
       bannerUrl: dados.bannerUrl,
-      inicio: dayjs(dados.inicio).startOf("day").toISOString(),
-      fim: dayjs(dados.fim).endOf("day").toISOString(),
+      // Formata em hora local SEM converter para UTC: `toISOString()` deslocava
+      // o fim do dia para o dia seguinte em UTC-3 e o banco (TIMESTAMP WITHOUT
+      // TIME ZONE) gravava a data com um dia a mais (issue #43.3).
+      inicio: dayjs(dados.inicio).startOf("day").format("YYYY-MM-DDTHH:mm:ss"),
+      fim: dayjs(dados.fim).endOf("day").format("YYYY-MM-DDTHH:mm:ss"),
     };
 
     try {
