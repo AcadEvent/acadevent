@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { AUTH_ENABLED, COOKIE_SESSAO } from "@/lib/auth/config";
+
 /**
  * Guarda de rotas RBAC (RF02.1.2 / RNF03.2).
  *
@@ -16,8 +18,6 @@ import { NextResponse, type NextRequest } from "next/server";
  * TODO(auth): ao integrar a sessão (src/lib/auth/session.ts), ligar AUTH_ENABLED
  * e checar o token/perfil (redirecionar para /login quando ausente/insuficiente).
  */
-
-const AUTH_ENABLED = false;
 
 const PROTECTED_PREFIXES = ["/painel", "/gerenciar", "/admin"];
 
@@ -36,7 +36,7 @@ export function middleware(request: NextRequest) {
   }
 
   // TODO(auth): validar sessão real. Sem sessão → redireciona ao login.
-  const hasSession = request.cookies.has("acadevent_session");
+  const hasSession = request.cookies.has(COOKIE_SESSAO);
   if (!hasSession) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);

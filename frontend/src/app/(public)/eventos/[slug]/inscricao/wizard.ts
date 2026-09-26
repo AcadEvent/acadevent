@@ -6,15 +6,8 @@
  */
 import type { StatusInscricao } from "@/lib/types";
 
-/**
- * Guarda de sessão do fluxo de inscrição (RF02.1.2). Segue a mesma convenção do
- * src/proxy.ts: enquanto o contrato de auth com o backend não existe,
- * `getSession()` sempre devolve null — então o gate fica DESLIGADO para o time
- * conseguir percorrer o fluxo com os dados mock.
- *
- * TODO(auth): ligar junto com o AUTH_ENABLED do src/proxy.ts.
- */
-export const AUTH_ENABLED = false;
+/** Flag de auth central; liga o gate do fluxo de inscrição (RF02.1.2). */
+export { AUTH_ENABLED } from "@/lib/auth/config";
 
 /** Passos do wizard de inscrição — 4 de no máximo 5 (RNF04.4). */
 export const PASSOS = ["Revisão", "Atividades", "Pagamento", "Confirmação"];

@@ -4,8 +4,11 @@ import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import Link from "@mui/material/Link";
+import LogoutIcon from "@mui/icons-material/Logout";
 import SchoolIcon from "@mui/icons-material/School";
 import Sidebar, { type SidebarItem } from "./Sidebar";
+
+import { sairAction } from "@/lib/auth/actions";
 
 export interface DashboardShellProps {
   sidebarTitle: string;
@@ -38,10 +41,19 @@ export default function DashboardShell({
             </Typography>
           </Link>
           <Box sx={{ flexGrow: 1 }} />
-          {/* TODO(auth): avatar/menu do usuário autenticado. */}
           <Button href="/painel" color="inherit" size="small">
             Meu painel
           </Button>
+          <Box component="form" action={sairAction}>
+            <Button
+              type="submit"
+              color="inherit"
+              size="small"
+              startIcon={<LogoutIcon />}
+            >
+              Sair
+            </Button>
+          </Box>
         </Toolbar>
       </AppBar>
 

@@ -23,7 +23,8 @@ import Typography from "@mui/material/Typography";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 
-import { SENHA_MIN_CARACTERES, postCadastro } from "@/lib/api";
+import { SENHA_MIN_CARACTERES } from "@/lib/api";
+import { cadastrarAction } from "@/lib/auth/actions";
 
 const cadastroSchema = z
   .object({
@@ -74,17 +75,14 @@ export default function CadastroForm() {
 
   async function onSubmit({ nome, email, senha }: FormularioCadastro) {
     setErro(null);
-    try {
-      await postCadastro({ nome, email, senha });
-      setRedirecionando(true);
-      router.push("/painel");
-    } catch (e) {
-      setErro(
-        e instanceof Error
-          ? e.message
-          : "Não foi possível criar sua conta agora. Tente novamente.",
-      );
+    const resultado = await cadastrarAction({ nome, email, senha });
+    if (!resultado.ok) {
+      setErro(resultado.erro);
+      return;
     }
+    setRedirecionando(true);
+    router.push("/painel");
+    router.refresh();
   }
 
   const carregando = isSubmitting || redirecionando;
