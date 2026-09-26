@@ -4,7 +4,7 @@
  * PROPÓSITO: Cadastro de novo usuário (e-mail + senha).
  * COMPONENTES: TextField, Checkbox, Button (react-hook-form + zod), em
  *   CadastroForm.tsx
- * DADOS: postCadastro() (via src/lib/api, nunca fetch direto)
+ * DADOS: cadastrarAction() (Server Action em src/lib/auth/actions.ts)
  * ESTADOS: loading (Button loading no envio) / erro (Alert e helperText por
  *   campo, RNF04.3). Vazio não se aplica a formulário.
  * DONE: responsivo, tokens do tema, estados cobertos, placeholder substituído.

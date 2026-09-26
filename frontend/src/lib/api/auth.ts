@@ -1,88 +1,100 @@
 /**
- * Domínio: Autenticação. Acesso a dados, hoje sobre mock.
- * Ver docs/arquitetura-frontend.md §4. Não importar de src/lib/mock nas páginas.
+ * Domínio: Autenticação — chamadas à API NestJS (server-side).
  *
- * TODO(auth): trocar o corpo destas funções por fetch em ${API_URL}/auth/...
- * quando o contrato do NestJS existir (RNF03.1) e passar a gravar a sessão
- * (cookie httpOnly) para ligar o guard em src/proxy.ts.
+ * Contrato #74: o backend usa JWT Bearer (POST /auth/login → { access_token }).
+ * O token é guardado num cookie httpOnly pela camada de sessão (src/lib/auth) e
+ * reenviado como `Authorization: Bearer` nas chamadas autenticadas. Estas funções
+ * só falam com o backend — quem grava/lê o cookie são os Server Actions e o
+ * getSession.
  */
 import type {
   CredenciaisLogin,
   DadosCadastro,
+  PerfilUsuario,
   UsuarioAutenticado,
 } from "@/lib/types";
-import { SENHA_DEMO, mockSenhas, mockUsuarios } from "@/lib/mock/auth";
-import { fake } from "./_client";
+import { API_URL } from "./_client";
 
-/**
- * Piso de tamanho de senha. Os requisitos não fixam política de senha, então
- * adotamos 8 caracteres.
- * TODO(auth): alinhar com a validação do backend quando ela existir.
- */
+/** Piso de tamanho de senha (validação de formulário; alinhar com o backend). */
 export const SENHA_MIN_CARACTERES = 8;
 
-/**
- * Conta de exemplo mostrada na tela de login para o time conseguir navegar nas
- * áreas autenticadas.
- * TODO(auth): remover junto com o mock ao integrar o login real.
- */
-export const CONTA_DEMO = {
-  email: mockUsuarios[0].email,
-  senha: SENHA_DEMO,
-};
-
-/** Mensagem única para não revelar se o e-mail existe. */
-const ERRO_CREDENCIAIS = "E-mail ou senha incorretos.";
-
-function normalizarEmail(email: string): string {
-  return email.trim().toLowerCase();
+/** Usuário como o backend devolve (snake_case, perfis como strings). */
+interface UsuarioApi {
+  id_usuario: number;
+  nome: string;
+  email: string;
+  url_foto?: string | null;
+  perfis: string[];
 }
 
-/** Login por e-mail e senha (RF02.1.1). Lança erro se as credenciais não conferem. */
-export async function postLogin({
-  email,
-  senha,
-}: CredenciaisLogin): Promise<UsuarioAutenticado> {
-  const emailNormalizado = normalizarEmail(email);
-  const usuario = mockUsuarios.find(
-    (u) => u.email.toLowerCase() === emailNormalizado,
-  );
-
-  if (!usuario || mockSenhas[usuario.email] !== senha) {
-    throw new Error(ERRO_CREDENCIAIS);
-  }
-
-  return fake(usuario);
+interface RespostaAuth {
+  access_token: string;
+  usuario: UsuarioApi;
 }
 
-/**
- * Cadastro de novo usuário (RF02.1.1). Lança erro se o e-mail já está em uso.
- * A conta criada fica só em memória, então recarregar a aba a perde.
- */
-export async function postCadastro({
-  nome,
-  email,
-  senha,
-}: DadosCadastro): Promise<UsuarioAutenticado> {
-  const emailNormalizado = normalizarEmail(email);
-
-  if (mockUsuarios.some((u) => u.email.toLowerCase() === emailNormalizado)) {
-    throw new Error("Este e-mail já está cadastrado.");
-  }
-
-  const novo: UsuarioAutenticado = {
-    id: String(mockUsuarios.length + 1),
-    nome: nome.trim(),
-    email: emailNormalizado,
-    // Todo usuário nasce participante. Os outros papéis são atribuídos por
-    // evento (RF02.2) ou pelo administrador da plataforma (RF02.1.3).
-    perfis: ["participante"],
+function toUsuario(u: UsuarioApi): UsuarioAutenticado {
+  return {
+    id: String(u.id_usuario),
+    nome: u.nome,
+    email: u.email,
+    urlFoto: u.url_foto ?? undefined,
+    perfis: u.perfis as PerfilUsuario[],
   };
+}
 
-  // TODO(auth): substituir por POST /auth/cadastro. A senha vai para o backend,
-  // que armazena apenas o hash bcrypt (RNF03.1).
-  mockUsuarios.push(novo);
-  mockSenhas[novo.email] = senha;
+async function postAuth(
+  path: string,
+  body: unknown,
+  erros: Record<number, string>,
+): Promise<RespostaAuth> {
+  const res = await fetch(`${API_URL}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(
+      erros[res.status] ?? "Não foi possível concluir agora. Tente novamente.",
+    );
+  }
+  return res.json() as Promise<RespostaAuth>;
+}
 
-  return fake(novo);
+/** Login por e-mail e senha (RF02.1.1). */
+export async function loginRequest(
+  cred: CredenciaisLogin,
+): Promise<{ token: string; usuario: UsuarioAutenticado }> {
+  const r = await postAuth(
+    "/auth/login",
+    { email: cred.email.trim().toLowerCase(), senha: cred.senha },
+    { 401: "E-mail ou senha incorretos." },
+  );
+  return { token: r.access_token, usuario: toUsuario(r.usuario) };
+}
+
+/** Cadastro de novo usuário (RF02.1.1). */
+export async function cadastroRequest(
+  dados: DadosCadastro,
+): Promise<{ token: string; usuario: UsuarioAutenticado }> {
+  const r = await postAuth(
+    "/auth/cadastro",
+    {
+      nome: dados.nome.trim(),
+      email: dados.email.trim().toLowerCase(),
+      senha: dados.senha,
+    },
+    { 409: "Este e-mail já está cadastrado." },
+  );
+  return { token: r.access_token, usuario: toUsuario(r.usuario) };
+}
+
+/** Resolve o usuário atual a partir do token (GET /auth/me, Bearer). */
+export async function meRequest(token: string): Promise<UsuarioAutenticado> {
+  const res = await fetch(`${API_URL}/auth/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Sessão inválida.");
+  return toUsuario((await res.json()) as UsuarioApi);
 }

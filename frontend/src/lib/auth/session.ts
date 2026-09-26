@@ -1,25 +1,36 @@
+import { cookies } from "next/headers";
+
 import type { PerfilUsuario } from "@/lib/types";
+import { meRequest } from "@/lib/api";
+
+import { COOKIE_SESSAO } from "./config";
 
 /**
- * Stub de sessão/autenticação (RF02.1 / RNF03).
+ * Sessão do usuário resolvida no servidor (RF02.1 / RNF03.1).
  *
- * A autenticação real (e-mail+senha, hash bcrypt, tokens) vive no backend NestJS
- * (RNF03.1); o frontend apenas lê a sessão e aplica RBAC na UI. Enquanto o
- * contrato de auth não existe, `getSession()` retorna null.
- *
- * TODO(auth): ler o token de sessão (cookie httpOnly) e resolver o usuário via
- * API. Alimentar o guard de rotas em src/middleware.ts.
+ * O JWT do backend vive num cookie httpOnly (`acadevent_session`, gravado pelos
+ * Server Actions em ./actions.ts). Aqui lemos o cookie e resolvemos o usuário via
+ * `GET /auth/me` (Bearer). O middleware (src/middleware.ts) faz o gate barato
+ * (cookie presente?); esta função faz a resolução completa para a UI/RBAC.
  */
-
 export interface Session {
   userId: string;
   nome: string;
+  email: string;
   perfis: PerfilUsuario[];
 }
 
 export async function getSession(): Promise<Session | null> {
-  // TODO(auth): substituir por leitura real do cookie + validação na API.
-  return null;
+  const token = (await cookies()).get(COOKIE_SESSAO)?.value;
+  if (!token) return null;
+
+  try {
+    const u = await meRequest(token);
+    return { userId: u.id, nome: u.nome, email: u.email, perfis: u.perfis };
+  } catch {
+    // Token ausente/expirado/inválido → tratado como não autenticado.
+    return null;
+  }
 }
 
 /** True se a sessão possui ao menos um dos perfis exigidos (RBAC, RF02.1.2). */

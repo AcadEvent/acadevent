@@ -20,7 +20,7 @@ import Typography from "@mui/material/Typography";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 
-import { CONTA_DEMO, postLogin } from "@/lib/api";
+import { entrarAction } from "@/lib/auth/actions";
 
 const loginSchema = z.object({
   email: z.email("Informe um e-mail válido."),
@@ -65,17 +65,14 @@ export default function LoginForm() {
 
   async function onSubmit(dados: FormularioLogin) {
     setErro(null);
-    try {
-      await postLogin(dados);
-      setRedirecionando(true);
-      router.push(destino);
-    } catch (e) {
-      setErro(
-        e instanceof Error
-          ? e.message
-          : "Não foi possível entrar agora. Tente novamente.",
-      );
+    const resultado = await entrarAction(dados);
+    if (!resultado.ok) {
+      setErro(resultado.erro);
+      return;
     }
+    setRedirecionando(true);
+    router.push(destino);
+    router.refresh();
   }
 
   const carregando = isSubmitting || redirecionando;
@@ -97,19 +94,6 @@ export default function LoginForm() {
           {erro}
         </Alert>
       )}
-
-      {/* TODO(auth): remover ao integrar a autenticação real do backend. */}
-      <Alert severity="info" variant="outlined">
-        Ambiente de demonstração. Use{" "}
-        <Box component="strong" sx={{ fontWeight: 600 }}>
-          {CONTA_DEMO.email}
-        </Box>{" "}
-        com a senha{" "}
-        <Box component="strong" sx={{ fontWeight: 600 }}>
-          {CONTA_DEMO.senha}
-        </Box>
-        .
-      </Alert>
 
       <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate>
         <Stack spacing={2}>

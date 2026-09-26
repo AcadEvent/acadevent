@@ -3,7 +3,7 @@
  * OWNER: Kauan   RF: RF02.1.1, RNF03.1   PRIORIDADE: MVP
  * PROPÓSITO: Login por e-mail e senha.
  * COMPONENTES: TextField, Button (react-hook-form + zod), em LoginForm.tsx
- * DADOS: postLogin() (via src/lib/api, nunca fetch direto)
+ * DADOS: entrarAction() (Server Action em src/lib/auth/actions.ts)
  * ESTADOS: loading (Skeleton no fallback, Button loading no envio) /
  *   erro (Alert). Vazio não se aplica a formulário.
  * DONE: responsivo, tokens do tema, estados cobertos, placeholder substituído.
