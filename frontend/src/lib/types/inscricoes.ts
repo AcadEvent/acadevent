@@ -62,13 +62,6 @@ export interface NovaInscricao {
   participante?: string;
 }
 
-/** Vínculo do participante com a instituição (usado no passo 1 da inscrição). */
-export type CategoriaParticipante =
-  | "estudante"
-  | "docente"
-  | "profissional"
-  | "outro";
-
 /** Lote de ingressos de uma edição (RF04.2). */
 export interface LoteIngresso {
   id: string;
@@ -79,12 +72,4 @@ export interface LoteIngresso {
   encerramento?: string; // ISO
   vagas: number;
   vagasRestantes?: number;
-}
-
-/** Dados coletados no passo 1 do fluxo de inscrição (RF01.5.3, RNF04.4). */
-export interface DadosParticipante {
-  nomeCompleto: string;
-  email: string;
-  instituicao?: string;
-  categoria: CategoriaParticipante;
 }

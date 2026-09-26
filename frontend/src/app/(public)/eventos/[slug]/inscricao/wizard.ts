@@ -17,7 +17,7 @@ import type { StatusInscricao } from "@/lib/types";
 export const AUTH_ENABLED = false;
 
 /** Passos do wizard de inscrição — 4 de no máximo 5 (RNF04.4). */
-export const PASSOS = ["Dados", "Atividades", "Pagamento", "Confirmação"];
+export const PASSOS = ["Revisão", "Atividades", "Pagamento", "Confirmação"];
 
 /** Motivo do bloqueio quando as inscrições não estão abertas (RF01.5.3). */
 export const BLOQUEIO: Record<
