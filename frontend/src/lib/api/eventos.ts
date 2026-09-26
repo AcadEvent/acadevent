@@ -1,8 +1,17 @@
 /**
- * Domínio: Eventos — acesso a dados (mock por enquanto).
+ * Domínio: Eventos — acesso a dados.
  * Ver docs/arquitetura-frontend.md §4. Não importar de src/lib/mock nas páginas.
+ *
+ * Leituras públicas (getEventos/getEvento/getEventosPublicados) já consomem a API
+ * real (GET /eventos, GET /eventos/:slug). As demais funções (autenticadas ou
+ * sub-recursos) seguem em mock até o contrato de sessão (#74) e as issues #90–#93.
  */
-import type { Atividade, Evento, Ministrante } from "@/lib/types";
+import type {
+  Atividade,
+  Evento,
+  Ministrante,
+  StatusEvento,
+} from "@/lib/types";
 import type { DashboardEvento } from "@/lib/types";
 import {
   mockAtividades,
@@ -11,10 +20,69 @@ import {
   mockMinistrantes,
 } from "@/lib/mock/eventos";
 import { mockDashboardIndicadores } from "@/lib/mock/eventos";
-import { fake } from "./_client";
+import { API_URL, fake } from "./_client";
 
-export function getEventos(): Promise<Evento[]> {
-  return fake(mockEventos);
+/**
+ * Forma crua devolvida hoje pelo backend: o `Edicao` do Prisma (snake_case) com o
+ * `slug` anexado. TODO(#74): remover este mapper quando o backend passar a
+ * devolver o `Evento` (camelCase) do contrato — aí as leituras só fazem `fetch`.
+ */
+interface EdicaoApi {
+  slug: string;
+  titulo_oficial?: string | null;
+  sigla?: string | null;
+  numero_edicao?: string | null;
+  descricao_geral?: string | null;
+  area_tematica?: string | null;
+  unidade_promotora?: string | null;
+  endereco?: string | null;
+  url_logotipo?: string | null;
+  status_evento?: string | null;
+  data_abertura_evento?: string | null;
+  data_encerramento_evento?: string | null;
+  capacidade_max_participantes?: number | null;
+}
+
+const STATUS_MAP: Record<string, StatusEvento> = {
+  rascunho: "rascunho",
+  ativo: "publicado",
+  publicado: "publicado",
+  em_andamento: "em_andamento",
+  "em andamento": "em_andamento",
+  encerrado: "encerrado",
+  arquivado: "arquivado",
+};
+
+function normalizarStatus(valor?: string | null): StatusEvento {
+  return STATUS_MAP[(valor ?? "").trim().toLowerCase()] ?? "publicado";
+}
+
+function edicaoToEvento(e: EdicaoApi): Evento {
+  return {
+    slug: e.slug,
+    nome: e.titulo_oficial ?? "",
+    sigla: e.sigla ?? undefined,
+    edicao: e.numero_edicao ?? undefined,
+    descricao: e.descricao_geral ?? undefined,
+    areaTematica: e.area_tematica ?? undefined,
+    instituicao: e.unidade_promotora ?? undefined,
+    local: e.endereco ?? undefined,
+    logoUrl: e.url_logotipo ?? undefined,
+    status: normalizarStatus(e.status_evento),
+    // TODO(#74): o backend ainda não envia o status de inscrição. A lista pública
+    // só traz eventos visíveis, então assumimos "abertas" até o contrato definir.
+    inscricao: "abertas",
+    inicio: e.data_abertura_evento ?? "",
+    fim: e.data_encerramento_evento ?? "",
+    capacidade: e.capacidade_max_participantes ?? undefined,
+  };
+}
+
+export async function getEventos(): Promise<Evento[]> {
+  const res = await fetch(`${API_URL}/eventos`, { cache: "no-store" });
+  if (!res.ok) throw new Error("Não foi possível carregar os eventos.");
+  const dados = (await res.json()) as EdicaoApi[];
+  return dados.map(edicaoToEvento);
 }
 
 export function getEventosOrganizador(): Promise<Evento[]> {
@@ -28,12 +96,18 @@ export function getMeusEventos(): Promise<Evento[]> {
   );
 }
 
-export function getEvento(slug: string): Promise<Evento | null> {
-  return fake(mockEventos.find((e) => e.slug === slug) ?? null);
+export async function getEvento(slug: string): Promise<Evento | null> {
+  const res = await fetch(`${API_URL}/eventos/${encodeURIComponent(slug)}`, {
+    cache: "no-store",
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error("Não foi possível carregar o evento.");
+  return edicaoToEvento((await res.json()) as EdicaoApi);
 }
 
 export function getEventosPublicados(): Promise<Evento[]> {
-  return fake(mockEventos.filter((e) => e.status === "publicado"));
+  // GET /eventos já devolve apenas eventos publicados/ativos (listarPublicos).
+  return getEventos();
 }
 
 export function getAtividades(_eventoSlug: string): Promise<Atividade[]> {
