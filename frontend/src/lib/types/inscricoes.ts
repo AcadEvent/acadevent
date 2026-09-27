@@ -73,3 +73,30 @@ export interface LoteIngresso {
   vagas: number;
   vagasRestantes?: number;
 }
+
+/** Recebido por método de pagamento (linha do relatório financeiro). */
+export interface ResumoPorMetodo {
+  metodo: MetodoPagamento;
+  quantidade: number;
+  total: number;
+}
+
+/** Relatório financeiro consolidado de uma edição (RF04.7 / RF13). */
+export interface RelatorioFinanceiro {
+  totalInscricoes: number;
+  confirmadas: number;
+  pendentes: number;
+  canceladas: number;
+  receitaConfirmada: number;
+  receitaPendente: number;
+  porMetodo: ResumoPorMetodo[];
+}
+
+/** Resultado da validação de check-in na portaria (RF04.8). */
+export type ResultadoCheckin =
+  | { ok: true; participante: string; codigo: string }
+  | {
+      ok: false;
+      motivo: "nao_encontrado" | "ja_validado" | "nao_confirmado";
+      mensagem: string;
+    };

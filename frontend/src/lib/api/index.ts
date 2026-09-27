@@ -15,5 +15,6 @@ export { API_URL } from "./_client";
 export * from "./eventos";
 export * from "./auth";
 export * from "./inscricoes";
+export * from "./pagamentos";
 export * from "./painel";
 
