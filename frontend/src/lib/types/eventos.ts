@@ -46,6 +46,8 @@ export interface Atividade {
   titulo: string;
   descricao?: string;
   tipo: TipoAtividade;
+  /** Rótulo original do backend (tipo_atividade), quando não mapeável ao enum. */
+  tipoLabel?: string;
   inicio: string; // ISO
   fim: string; // ISO
   cargaHoraria?: number;
@@ -53,11 +55,15 @@ export interface Atividade {
   capacidade?: number;
   vagasRestantes?: number;
   ministrantesIds?: string[];
+  /** Ministrantes já resolvidos (vêm embutidos no cronograma). Sem e-mail. */
+  ministrantes?: Ministrante[];
 }
 
 /** Evento na visão da UI (achata Evento+Edicao dos requisitos). */
 export interface Evento {
   slug: string;
+  /** id_edicao do backend — necessário para endpoints keyed por edição (RF05/RF14). */
+  idEdicao?: number;
   nome: string;
   sigla?: string;
   edicao?: string;

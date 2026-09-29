@@ -8,6 +8,7 @@
  */
 export * from "./comum";
 export * from "./eventos";
+export * from "./atividades";
 export * from "./inscricoes";
 export * from "./submissoes";
 export * from "./auth";

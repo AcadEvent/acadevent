@@ -28,6 +28,7 @@ import { API_URL, fake } from "./_client";
  * devolver o `Evento` (camelCase) do contrato — aí as leituras só fazem `fetch`.
  */
 interface EdicaoApi {
+  id_edicao?: number | null;
   slug: string;
   titulo_oficial?: string | null;
   sigla?: string | null;
@@ -60,6 +61,7 @@ function normalizarStatus(valor?: string | null): StatusEvento {
 function edicaoToEvento(e: EdicaoApi): Evento {
   return {
     slug: e.slug,
+    idEdicao: e.id_edicao ?? undefined,
     nome: e.titulo_oficial ?? "",
     sigla: e.sigla ?? undefined,
     edicao: e.numero_edicao ?? undefined,
