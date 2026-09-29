@@ -23,6 +23,16 @@ export function criarItem(input: {
   quantidadeTotal: number;
   quantidadeMinima: number;
 }): Promise<ItemInventario> {
+  if (
+    !Number.isInteger(input.quantidadeTotal) ||
+    input.quantidadeTotal <= 0 ||
+    !Number.isInteger(input.quantidadeMinima) ||
+    input.quantidadeMinima < 0
+  ) {
+    return Promise.reject(
+      new RangeError("As quantidades devem ser números inteiros válidos."),
+    );
+  }
   const item: ItemInventario = {
     ...input,
     id: `item-${crypto.randomUUID().slice(0, 8)}`,
@@ -43,7 +53,7 @@ export function retirarItem(
 ): Promise<ResultadoMovimento> {
   const item = mockItensInventario.find((i) => i.id === id);
   if (!item) return fake({ ok: false, erro: "Item não encontrado." });
-  if (quantidade <= 0) {
+  if (!Number.isInteger(quantidade) || quantidade <= 0) {
     return fake({ ok: false, erro: "Informe uma quantidade válida." });
   }
   if (quantidade > item.quantidadeDisponivel) {
@@ -63,7 +73,7 @@ export function devolverItem(
 ): Promise<ResultadoMovimento> {
   const item = mockItensInventario.find((i) => i.id === id);
   if (!item) return fake({ ok: false, erro: "Item não encontrado." });
-  if (quantidade <= 0) {
+  if (!Number.isInteger(quantidade) || quantidade <= 0) {
     return fake({ ok: false, erro: "Informe uma quantidade válida." });
   }
   if (item.quantidadeDisponivel + quantidade > item.quantidadeTotal) {

@@ -51,7 +51,11 @@ export default function InventarioGestao({
   });
   const formValido =
     form.nome.trim() !== "" &&
+    form.total !== "" &&
+    Number.isInteger(Number(form.total)) &&
     Number(form.total) > 0 &&
+    form.minima !== "" &&
+    Number.isInteger(Number(form.minima)) &&
     Number(form.minima) >= 0;
 
   async function salvarItem() {
@@ -78,6 +82,10 @@ export default function InventarioGestao({
   const [quantidade, setQuantidade] = useState("");
   const [erroMov, setErroMov] = useState<string | null>(null);
   const [salvandoMov, setSalvandoMov] = useState(false);
+  const movimentoValido =
+    quantidade !== "" &&
+    Number.isInteger(Number(quantidade)) &&
+    Number(quantidade) > 0;
 
   function abrirMov(item: ItemInventario, tipo: Movimento["tipo"]) {
     setMov({ item, tipo });
@@ -86,7 +94,7 @@ export default function InventarioGestao({
   }
 
   async function salvarMov() {
-    if (!mov) return;
+    if (!mov || !movimentoValido) return;
     const qtd = Number(quantidade);
     setSalvandoMov(true);
     setErroMov(null);
@@ -236,6 +244,7 @@ export default function InventarioGestao({
               <TextField
                 label="Quantidade total"
                 type="number"
+                slotProps={{ htmlInput: { min: 1, step: 1 } }}
                 value={form.total}
                 onChange={(e) => setForm({ ...form, total: e.target.value })}
                 required
@@ -244,6 +253,7 @@ export default function InventarioGestao({
               <TextField
                 label="Quantidade mínima"
                 type="number"
+                slotProps={{ htmlInput: { min: 0, step: 1 } }}
                 value={form.minima}
                 onChange={(e) => setForm({ ...form, minima: e.target.value })}
                 required
@@ -283,6 +293,7 @@ export default function InventarioGestao({
             <TextField
               label="Quantidade"
               type="number"
+              slotProps={{ htmlInput: { min: 1, step: 1 } }}
               value={quantidade}
               onChange={(e) => setQuantidade(e.target.value)}
               autoFocus
@@ -302,7 +313,7 @@ export default function InventarioGestao({
           <Button
             onClick={salvarMov}
             variant="contained"
-            disabled={Number(quantidade) <= 0}
+            disabled={!movimentoValido}
             loading={salvandoMov}
           >
             {mov?.tipo === "retirar" ? "Retirar" : "Devolver"}
