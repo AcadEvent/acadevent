@@ -3,6 +3,12 @@ module.exports = {
   testEnvironment: "node",
   roots: ["<rootDir>/src"],
   testMatch: ["**/*.test.ts"],
+  collectCoverageFrom: [
+    "src/lib/api/**/*.ts",
+    "src/lib/datas.ts",
+    "src/app/**/actions.ts",
+    "!src/lib/api/index.ts",
+  ],
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
   },

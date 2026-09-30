@@ -1,5 +1,7 @@
 # AcadEvent - Sistema de Gerenciamento de Eventos Acadêmicos
 
+Para o módulo de testes (item 12), consulte [a documentação de execução](docs/modulo-testes.md) e [o relatório desta entrega](docs/relatorio-testes.md). Após preparar as dependências, execute `npm run test:report` na raiz para gerar os resultados e a cobertura de backend e frontend.
+
 Este é o repositório central (Monorepo) do projeto **AcadEvent**, desenvolvido para a disciplina de Tópicos em Computação 2 (2026). O sistema foi projetado sob o padrão de **MVC Distribuído em 3 Camadas** (Apresentação, Lógica de Negócio e Dados), garantindo total desacoplamento e escalabilidade independente.
 
 Este documento detalha a infraestrutura base do ecossistema, as decisões arquiteturais adotadas e o passo a passo definitivo para execução por todos os membros da equipe.

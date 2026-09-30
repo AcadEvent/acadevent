@@ -33,10 +33,15 @@ jobs:
         run: npm ci
 
       - name: Executar suite de testes do Frontend
-        shell: bash
-        run: |
-          if npm run | grep -q "^  test$"; then
-            npm test
-          else
-            echo "Nenhum teste configurado no frontend no momento (comportamento esperado)."
-          fi
+        run: npm run test:report
+
+      - name: Publicar relatorio e cobertura do Frontend
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testes-frontend
+          path: |
+            reports/frontend/
+            reports/relatorio-testes-frontend.md
+            reports/resumo-frontend.json
+          if-no-files-found: warn

@@ -1,5 +1,6 @@
 # Dependências de Node (tanto frontend quanto backend)
 node_modules/
+reports/
 
 # Builds e arquivos gerados compilados
 dist/

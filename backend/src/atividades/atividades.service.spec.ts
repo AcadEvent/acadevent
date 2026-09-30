@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/unbound-method */
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
@@ -13,7 +14,13 @@ import { PrismaService } from '../prisma/prisma.service';
 interface MockPrismaService {
   atividade: {
     findUnique: jest.Mock;
+    create: jest.Mock;
   };
+  edicao: { findUnique: jest.Mock };
+  perfilMinistrante: { findUnique: jest.Mock };
+  perfilOrganizador: { findUnique: jest.Mock };
+  perfilAdministrador: { findUnique: jest.Mock };
+  atividadeMinistrante: { create: jest.Mock };
   perfilParticipante: {
     findUnique: jest.Mock;
   };
@@ -44,7 +51,13 @@ describe('AtividadesService', () => {
       ),
       atividade: {
         findUnique: jest.fn(),
+        create: jest.fn(),
       },
+      edicao: { findUnique: jest.fn() },
+      perfilMinistrante: { findUnique: jest.fn() },
+      perfilOrganizador: { findUnique: jest.fn() },
+      perfilAdministrador: { findUnique: jest.fn() },
+      atividadeMinistrante: { create: jest.fn() },
       perfilParticipante: {
         findUnique: jest.fn(),
       },
@@ -285,6 +298,187 @@ describe('AtividadesService', () => {
     const resultado = await service.inscrever(1, { id_atividade: 2 });
     expect(resultado).toBeDefined();
     expect(prisma.inscricaoAtividade.create).toHaveBeenCalled();
+  });
+
+  describe('RF05 - cadastro e associação de ministrante', () => {
+    const dto = { id_edicao: 1, titulo: 'Oficina', carga_horario: 4 };
+
+    it('não persiste atividade quando a edição não existe', async () => {
+      prisma.edicao.findUnique.mockResolvedValue(null);
+      await expect(service.criarAtividade(dto)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(prisma.atividade.create).not.toHaveBeenCalled();
+    });
+
+    it('cadastra atividade na edição selecionada', async () => {
+      prisma.edicao.findUnique.mockResolvedValue({ id_edicao: 1 });
+      prisma.atividade.create.mockResolvedValue({ id_atividade: 2, ...dto });
+      await expect(service.criarAtividade(dto)).resolves.toMatchObject(dto);
+      expect(prisma.atividade.create).toHaveBeenCalledWith({
+        data: expect.objectContaining(dto),
+      });
+    });
+
+    it.each(['atividade', 'ministrante'])(
+      'não associa quando %s não existe',
+      async (ausente) => {
+        prisma.atividade.findUnique.mockResolvedValue(
+          ausente === 'atividade' ? null : { id_atividade: 2 },
+        );
+        prisma.perfilMinistrante.findUnique.mockResolvedValue(null);
+        await expect(
+          service.associarMinistrante({ id_atividade: 2, id_ministrante: 3 }),
+        ).rejects.toThrow(NotFoundException);
+        expect(prisma.atividadeMinistrante.create).not.toHaveBeenCalled();
+      },
+    );
+
+    it('associa ministrante existente à atividade', async () => {
+      prisma.atividade.findUnique.mockResolvedValue({ id_atividade: 2 });
+      prisma.perfilMinistrante.findUnique.mockResolvedValue({
+        id_ministrante: 3,
+      });
+      const data = { id_atividade: 2, id_ministrante: 3 };
+      prisma.atividadeMinistrante.create.mockResolvedValue(data);
+      await expect(service.associarMinistrante(data)).resolves.toEqual(data);
+      expect(prisma.atividadeMinistrante.create).toHaveBeenCalledWith({ data });
+    });
+  });
+
+  describe('RF05.3 - inscrição e limites de horário', () => {
+    beforeEach(() => {
+      prisma.atividade.findUnique.mockResolvedValue({
+        id_atividade: 2,
+        id_edicao: 1,
+        reservas: [
+          {
+            espaco: { capacidade_max: 20 },
+            data_inicio: new Date('2026-10-01T10:00:00Z'),
+            data_final: new Date('2026-10-01T12:00:00Z'),
+          },
+        ],
+      });
+      prisma.perfilParticipante.findUnique.mockResolvedValue({
+        id_participante: 10,
+      });
+      prisma.inscricaoEdicao.findFirst.mockResolvedValue({
+        id_inscricao_edicao: 100,
+        status: 'Confirmada',
+      });
+      prisma.inscricaoAtividade.count.mockResolvedValue(0);
+      prisma.inscricaoAtividade.create.mockResolvedValue({
+        id_atividade: 2,
+        status: 'Inscrito',
+      });
+    });
+
+    it('rejeita inscrição duplicada sem gravar', async () => {
+      prisma.inscricaoAtividade.findFirst.mockResolvedValue({
+        id_inscricao_atividade: 10,
+      });
+      await expect(service.inscrever(1, { id_atividade: 2 })).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(prisma.inscricaoAtividade.create).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['sobreposição parcial', '11:00', '13:00'],
+      ['atividade contida', '09:00', '13:00'],
+      ['mesmo horário', '10:00', '12:00'],
+    ])('rejeita %s sem gravar', async (_, inicio, fim) => {
+      prisma.inscricaoAtividade.findMany.mockResolvedValue([
+        {
+          status: 'Inscrito',
+          atividade: {
+            titulo: 'Outra atividade',
+            reservas: [
+              {
+                data_inicio: new Date(`2026-10-01T${inicio}:00Z`),
+                data_final: new Date(`2026-10-01T${fim}:00Z`),
+              },
+            ],
+          },
+        },
+      ]);
+      await expect(service.inscrever(1, { id_atividade: 2 })).rejects.toThrow(
+        ConflictException,
+      );
+      expect(prisma.inscricaoAtividade.create).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['08:00', '10:00'],
+      ['12:00', '14:00'],
+    ])('permite horários consecutivos %s–%s', async (inicio, fim) => {
+      prisma.inscricaoAtividade.findMany.mockResolvedValue([
+        {
+          status: 'Inscrito',
+          atividade: {
+            titulo: 'Outra atividade',
+            reservas: [
+              {
+                data_inicio: new Date(`2026-10-01T${inicio}:00Z`),
+                data_final: new Date(`2026-10-01T${fim}:00Z`),
+              },
+            ],
+          },
+        },
+      ]);
+      await expect(
+        service.inscrever(1, { id_atividade: 2 }),
+      ).resolves.toMatchObject({ status: 'Inscrito' });
+      expect(prisma.inscricaoAtividade.create).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('RF05.6 - autorização e integridade da chamada', () => {
+    const presencas = [{ id_inscricao_atividade: 10, status: 'Presente' }];
+
+    it('participante não pode registrar presença', async () => {
+      await expect(service.registrarChamada(presencas, 1)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(prisma.presenca.createMany).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      'perfilOrganizador',
+      'perfilMinistrante',
+      'perfilAdministrador',
+    ] as const)('%s pode registrar presença', async (perfil) => {
+      prisma[perfil].findUnique.mockResolvedValue({ id_usuario: 1 });
+      prisma.inscricaoAtividade.findUnique.mockResolvedValue({
+        id_atividade: 2,
+      });
+      prisma.presenca.createMany.mockResolvedValue({ count: 1 });
+      await expect(service.registrarChamada(presencas, 1)).resolves.toEqual({
+        count: 1,
+      });
+    });
+
+    it('rejeita status inválido sem gravar', async () => {
+      await expect(
+        service.registrarChamada([
+          { id_inscricao_atividade: 10, status: 'Inválido' },
+        ]),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.presenca.createMany).not.toHaveBeenCalled();
+    });
+
+    it('não grava parcialmente quando uma inscrição do lote não existe', async () => {
+      prisma.inscricaoAtividade.findUnique
+        .mockResolvedValueOnce({ id_atividade: 2 })
+        .mockResolvedValueOnce(null);
+      await expect(
+        service.registrarChamada([
+          ...presencas,
+          { id_inscricao_atividade: 999, status: 'Ausente' },
+        ]),
+      ).rejects.toThrow(NotFoundException);
+      expect(prisma.presenca.createMany).not.toHaveBeenCalled();
+    });
   });
 
   describe('AtividadesController - chamada sem JWT', () => {

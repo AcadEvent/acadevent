@@ -1,0 +1,11 @@
+{
+  "name": "acadevent-testes",
+  "private": true,
+  "scripts": {
+    "test": "node scripts/test-report.cjs",
+    "test:report": "node scripts/test-report.cjs",
+    "test:report:backend": "node scripts/test-report.cjs backend",
+    "test:report:frontend": "node scripts/test-report.cjs frontend",
+    "test:runner": "node --test scripts/test-report.test.cjs"
+  }
+}

@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start -p 3001",
     "lint": "eslint",
-    "test": "jest"
+    "test": "jest",
+    "test:report": "node ../scripts/test-report.cjs frontend"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
