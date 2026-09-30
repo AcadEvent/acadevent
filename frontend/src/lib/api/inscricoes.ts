@@ -7,6 +7,7 @@ import type {
   InscricaoEdicao,
   LoteIngresso,
   NovaInscricao,
+  ResultadoCheckin,
 } from "@/lib/types";
 import { mockCupons, mockInscricoes, mockLotes } from "@/lib/mock/inscricoes";
 import { fake } from "./_client";
@@ -169,4 +170,81 @@ export async function criarInscricao(
 
 export function getInscricao(id: string): Promise<InscricaoEdicao | null> {
   return fake(mockInscricoes.find((i) => i.id === id) ?? null);
+}
+
+// ── Gestão (organizador) ──────────────────────────────────────────────────────
+
+/** Inscrições de um evento, mais recentes primeiro (RF04.1). */
+export function getInscricoesDoEvento(
+  eventoSlug: string,
+): Promise<InscricaoEdicao[]> {
+  return fake(
+    mockInscricoes
+      .filter((i) => i.eventoSlug === eventoSlug)
+      .sort((a, b) => b.criadaEm.localeCompare(a.criadaEm)),
+  );
+}
+
+/**
+ * Confirmação manual de pagamento pelo organizador (RF04.5). Só faz efeito sobre
+ * inscrições pendentes; devolve a inscrição atualizada.
+ */
+export function confirmarPagamento(id: string): Promise<InscricaoEdicao> {
+  const inscricao = mockInscricoes.find((i) => i.id === id);
+  if (!inscricao) {
+    throw new Error("Inscrição não encontrada.");
+  }
+  if (inscricao.statusPagamento === "pendente") {
+    inscricao.statusPagamento = "confirmado";
+    inscricao.pagaEm = new Date().toISOString();
+  }
+  return fake(inscricao);
+}
+
+/** Check-ins já realizados (por id de inscrição). Vive só na memória do servidor. */
+const checkinsRealizados = new Set<string>();
+
+/**
+ * Valida um check-in por código na portaria (RF04.8). A primeira validação de um
+ * código confirmado dá certo; a repetição é rejeitada (evita reentrada).
+ */
+export function validarCheckin(
+  eventoSlug: string,
+  codigo: string,
+): Promise<ResultadoCheckin> {
+  const normalizado = codigo.trim().toUpperCase();
+  const inscricao = mockInscricoes.find(
+    (i) =>
+      i.eventoSlug === eventoSlug &&
+      (i.codigo ?? i.id).toUpperCase() === normalizado,
+  );
+
+  if (!inscricao) {
+    return fake({
+      ok: false,
+      motivo: "nao_encontrado",
+      mensagem: "Código não encontrado neste evento.",
+    });
+  }
+  if (inscricao.statusPagamento !== "confirmado") {
+    return fake({
+      ok: false,
+      motivo: "nao_confirmado",
+      mensagem: "Inscrição sem pagamento confirmado — check-in não liberado.",
+    });
+  }
+  if (checkinsRealizados.has(inscricao.id)) {
+    return fake({
+      ok: false,
+      motivo: "ja_validado",
+      mensagem: `Check-in já realizado para ${inscricao.participante}.`,
+    });
+  }
+
+  checkinsRealizados.add(inscricao.id);
+  return fake({
+    ok: true,
+    participante: inscricao.participante,
+    codigo: inscricao.codigo ?? inscricao.id,
+  });
 }

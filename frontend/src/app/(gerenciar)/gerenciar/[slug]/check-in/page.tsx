@@ -1,23 +1,43 @@
 /**
  * ROTA: /gerenciar/[slug]/check-in
- * OWNER: Arthur   RF: RF04.8   PRIORIDADE: Pós-MVP
- * PROPÓSITO: Validação de check-in via QR Code na portaria.
- * COMPONENTES: Scanner QR, Alert
- * DADOS: postCheckin() (via src/lib/api — nunca fetch direto)
- * ESTADOS: loading (Skeleton) / vazio (EmptyState) / erro (Alert)
- * DONE: responsivo, usa tokens do tema (sem cor hardcoded), estados cobertos,
- *   este placeholder substituído por conteúdo real. Ver docs/atribuicoes.md.
+ * OWNER: Arthur   RF: RF04.8   PRIORIDADE: SH
+ * PROPÓSITO: Validação de check-in por código na portaria (QR pode preencher o
+ *   mesmo campo). Rejeita repetição do mesmo código.
+ * COMPONENTES: PageHeader, TextField + Button (CheckinForm), Alert
+ * DADOS: validarCheckinAction(slug, codigo) (via ./actions, no mesmo processo do mock)
+ * ESTADOS: resultado (Alert success/warning/error)
+ * DONE: responsivo (usável em viewport estreita), tokens do tema.
  */
-import PagePlaceholder from "@/components/ui/PagePlaceholder";
+import type { Metadata } from "next";
 
-export default function Page() {
+import Typography from "@mui/material/Typography";
+
+import PageHeader from "@/components/layout/PageHeader";
+
+import CheckinForm from "./CheckinForm";
+
+export const metadata: Metadata = {
+  title: "Check-in",
+};
+
+export default async function CheckinPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+
   return (
-    <PagePlaceholder
-      title={"Check-in"}
-      owner={"Arthur"}
-      rf={"RF04.8"}
-      priority={"Pós-MVP"}
-      summary={"Validação de check-in via QR Code na portaria."}
-    />
+    <>
+      <PageHeader
+        title="Check-in"
+        subtitle="Valide a entrada dos participantes por código."
+      />
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+        Informe o código do ingresso (ex.: SITC26-0001). Um código já validado
+        não é aceito de novo.
+      </Typography>
+      <CheckinForm eventoSlug={slug} />
+    </>
   );
 }

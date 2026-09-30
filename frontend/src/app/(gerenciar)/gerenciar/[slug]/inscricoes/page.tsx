@@ -1,23 +1,75 @@
 /**
  * ROTA: /gerenciar/[slug]/inscricoes
- * OWNER: Arthur   RF: RF04.1–3, RF03.2.3   PRIORIDADE: MVP
- * PROPÓSITO: Gestão de inscrições, lotes e cupons.
- * COMPONENTES: Table, Dialog(lote/cupom)
- * DADOS: getInscricoes(slug) (via src/lib/api — nunca fetch direto)
- * ESTADOS: loading (Skeleton) / vazio (EmptyState) / erro (Alert)
- * DONE: responsivo, usa tokens do tema (sem cor hardcoded), estados cobertos,
- *   este placeholder substituído por conteúdo real. Ver docs/atribuicoes.md.
+ * OWNER: Arthur   RF: RF04.1, RF04.5, RF03.2.3   PRIORIDADE: MVP
+ * PROPÓSITO: Gestão de inscrições do evento — lista os inscritos e permite a
+ *   confirmação manual de pagamento (RF04.5). Lotes/cupons ficam para depois.
+ * COMPONENTES: PageHeader, Table + Dialog (InscricoesGestao), Chip, EmptyState
+ * DADOS: getEvento(slug), getInscricoesDoEvento(slug) (via @/lib/api);
+ *   confirmarPagamentoAction (via ./actions, no mesmo processo do mock)
+ * ESTADOS: vazio (EmptyState) / erro (Alert). loading em ./loading.tsx (se houver).
+ * DONE: responsivo, tokens do tema, estados cobertos.
  */
-import PagePlaceholder from "@/components/ui/PagePlaceholder";
+import type { Metadata } from "next";
 
-export default function Page() {
+import Alert from "@mui/material/Alert";
+
+import PageHeader from "@/components/layout/PageHeader";
+import EmptyState from "@/components/ui/EmptyState";
+import { getEvento, getInscricoesDoEvento } from "@/lib/api";
+import type { Evento, InscricaoEdicao } from "@/lib/types";
+
+import InscricoesGestao from "./InscricoesGestao";
+
+export const metadata: Metadata = {
+  title: "Inscrições",
+};
+
+export default async function InscricoesGestaoPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+
+  let evento: Evento | null;
+  let inscricoes: InscricaoEdicao[];
+  try {
+    [evento, inscricoes] = await Promise.all([
+      getEvento(slug),
+      getInscricoesDoEvento(slug),
+    ]);
+  } catch {
+    return (
+      <Alert severity="error">
+        Não foi possível carregar as inscrições. Tente novamente mais tarde.
+      </Alert>
+    );
+  }
+
+  const total = inscricoes.length;
+  const confirmadas = inscricoes.filter(
+    (i) => i.statusPagamento === "confirmado",
+  ).length;
+
   return (
-    <PagePlaceholder
-      title={"Inscrições"}
-      owner={"Arthur"}
-      rf={"RF04.1–3, RF03.2.3"}
-      priority={"MVP"}
-      summary={"Gestão de inscrições, lotes e cupons."}
-    />
+    <>
+      <PageHeader
+        title="Inscrições"
+        subtitle={
+          evento
+            ? `${evento.nome} · ${confirmadas}/${total} confirmadas`
+            : "Inscritos e confirmação de pagamento"
+        }
+      />
+
+      {total === 0 ? (
+        <EmptyState
+          title="Nenhuma inscrição"
+          description="Ainda não há inscrições neste evento."
+        />
+      ) : (
+        <InscricoesGestao inscricoes={inscricoes} />
+      )}
+    </>
   );
 }
