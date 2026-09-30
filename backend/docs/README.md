@@ -1,9 +1,9 @@
 # Documentação do Backend — AcadEvent
 
-- Versão: 0.2
-- Data: 2026-09-14
-- Autor: João Vitor Antunes da Silva (SPM)
-- Revisores: —
+Versão: 1.0  
+Data: 2026-09-30  
+Autor: João Vitor Antunes da Silva (SPM), Sizenando França (SBE)  
+Revisores: José Carlos da Silva Filho (SPM)
 
 ---
 
@@ -17,9 +17,13 @@ Centralizar decisões que impactam a API REST, o modelo de dados, a organizaçã
 
 ## Documentos
 
-| Documento | Conteúdo |
-| --- | --- |
-| _A definir_ | — |
+| Documento                                                                    | Conteúdo                                                                                                                                                              |
+| ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [decisoes-de-arquitetura.md](./decisoes-de-arquitetura.md)                   | Princípios arquiteturais, padrão Package by Feature, camadas do NestJS, padrão Adapter no Storage, estratégia de auditoria e ciclo de vida de conexões.               |
+| [decisoes-de-seguranca.md](./decisoes-de-seguranca.md)                       | Autenticação JWT, modelo RBAC, fail-fast de segredos de ambiente, mitigação de IDOR, prevenção de Path Traversal, upload seguro e conformidade com LGPD.              |
+| [decisoes-de-banco-e-concorrencia.md](./decisoes-de-banco-e-concorrencia.md) | Persistência com Prisma ORM, PostgreSQL, bloqueios pessimistas (`FOR UPDATE`), transações atômicas, integridade relacional entre edições e otimizações sem OOM.       |
+| [decisoes-de-api.md](./decisoes-de-api.md)                                   | Padrões REST, códigos HTTP, OpenAPI 3.0 / Swagger interativo, CORS, validação defensiva global e convenção de slugs em kebab-case.                                    |
+| [decisoes-dos-modulos.md](./decisoes-dos-modulos.md)                         | Revisão técnica aprofundada dos módulos implementados (12 módulos de negócio + Prisma), contratos de endpoints, regras de negócio e matriz de testes unitários e e2e. |
 
 ## Persistência local (Prisma)
 
@@ -36,21 +40,21 @@ Não altere Dockerfiles nem o `docker-compose.yml` para aplicar o schema: o cami
 
 ## Escopo deste diretório
 
-| Tema | Exemplos do que documentar |
-| --- | --- |
-| Arquitetura | Package by Feature, camadas, contratos entre módulos |
-| API | Versionamento, formatos de resposta, códigos HTTP, paginação |
-| Dados | Convenções Prisma, migrações, nomenclatura de entidades |
-| Segurança | Autenticação, autorização, validação de entrada |
-| Qualidade | Testes, tratamento de erros, logging |
+| Tema        | Exemplos do que documentar                                   |
+| ----------- | ------------------------------------------------------------ |
+| Arquitetura | Package by Feature, camadas, contratos entre módulos         |
+| API         | Versionamento, formatos de resposta, códigos HTTP, paginação |
+| Dados       | Convenções Prisma, migrações, nomenclatura de entidades      |
+| Segurança   | Autenticação, autorização, validação de entrada              |
+| Qualidade   | Testes, tratamento de erros, logging                         |
 
 ## Status
 
-| Fase | Escopo | Status |
-| --- | --- | --- |
-| Fase 1 | Decisões estruturais e convenções base | Em definição |
-| Fase 2 | Contratos de API e padrões por módulo | Planejada |
-| Fase 3 | Documentação de domínio (eventos, inscrições, certificados) | Planejada |
+| Fase   | Escopo                                                      | Status    |
+| ------ | ----------------------------------------------------------- | --------- |
+| Fase 1 | Decisões estruturais e convenções base                      | Concluída |
+| Fase 2 | Contratos de API e padrões por módulo                       | Concluída |
+| Fase 3 | Documentação de domínio (eventos, inscrições, certificados) | Concluída |
 
 ## Como usar
 
