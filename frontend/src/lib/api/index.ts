@@ -13,6 +13,7 @@
  */
 export { API_URL } from "./_client";
 export * from "./eventos";
+export * from "./atividades";
 export * from "./auth";
 export * from "./inscricoes";
 export * from "./espacos";

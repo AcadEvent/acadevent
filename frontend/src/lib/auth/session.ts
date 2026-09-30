@@ -20,6 +20,14 @@ export interface Session {
   perfis: PerfilUsuario[];
 }
 
+/**
+ * JWT bruto da sessão (cookie httpOnly) para reenviar como `Authorization: Bearer`
+ * em chamadas autenticadas server-side. Null se não há sessão.
+ */
+export async function getToken(): Promise<string | null> {
+  return (await cookies()).get(COOKIE_SESSAO)?.value ?? null;
+}
+
 export async function getSession(): Promise<Session | null> {
   const token = (await cookies()).get(COOKIE_SESSAO)?.value;
   if (!token) return null;
