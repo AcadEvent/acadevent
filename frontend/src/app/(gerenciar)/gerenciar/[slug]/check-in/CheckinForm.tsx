@@ -9,8 +9,9 @@ import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 
-import { validarCheckin } from "@/lib/api";
 import type { ResultadoCheckin } from "@/lib/types";
+
+import { validarCheckinAction } from "./actions";
 
 /**
  * Validação de check-in por código na portaria (RF04.8). Funciona em viewport
@@ -27,7 +28,7 @@ export default function CheckinForm({ eventoSlug }: { eventoSlug: string }) {
     setValidando(true);
     setResultado(null);
     try {
-      const r = await validarCheckin(eventoSlug, codigo);
+      const r = await validarCheckinAction(eventoSlug, codigo);
       setResultado(r);
       if (r.ok) setCodigo("");
     } finally {

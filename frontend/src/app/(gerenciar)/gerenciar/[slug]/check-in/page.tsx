@@ -4,7 +4,7 @@
  * PROPÓSITO: Validação de check-in por código na portaria (QR pode preencher o
  *   mesmo campo). Rejeita repetição do mesmo código.
  * COMPONENTES: PageHeader, TextField + Button (CheckinForm), Alert
- * DADOS: validarCheckin(slug, codigo) (via @/lib/api)
+ * DADOS: validarCheckinAction(slug, codigo) (via ./actions, no mesmo processo do mock)
  * ESTADOS: resultado (Alert success/warning/error)
  * DONE: responsivo (usável em viewport estreita), tokens do tema.
  */

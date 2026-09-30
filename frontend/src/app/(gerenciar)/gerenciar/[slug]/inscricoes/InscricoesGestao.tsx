@@ -19,8 +19,9 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 
-import { confirmarPagamento } from "@/lib/api";
 import type { InscricaoEdicao, StatusPagamento } from "@/lib/types";
+
+import { confirmarPagamentoAction } from "./actions";
 
 const STATUS_LABEL: Record<StatusPagamento, string> = {
   pendente: "Pendente",
@@ -51,11 +52,10 @@ const dataFmt = new Intl.DateTimeFormat("pt-BR", {
  * (RF04.1, RF04.5). Padrão tabela + dialog de confirmação reutilizável na gestão.
  */
 export default function InscricoesGestao({
-  inscricoes: iniciais,
+  inscricoes,
 }: {
   inscricoes: InscricaoEdicao[];
 }) {
-  const [inscricoes, setInscricoes] = useState(iniciais);
   const [alvo, setAlvo] = useState<InscricaoEdicao | null>(null);
   const [confirmando, setConfirmando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -65,10 +65,7 @@ export default function InscricoesGestao({
     setConfirmando(true);
     setErro(null);
     try {
-      const atualizada = await confirmarPagamento(alvo.id);
-      setInscricoes((lista) =>
-        lista.map((i) => (i.id === atualizada.id ? atualizada : i)),
-      );
+      await confirmarPagamentoAction(alvo.id);
       setAlvo(null);
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Não foi possível confirmar.");

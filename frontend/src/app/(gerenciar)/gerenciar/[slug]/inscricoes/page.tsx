@@ -4,7 +4,8 @@
  * PROPÓSITO: Gestão de inscrições do evento — lista os inscritos e permite a
  *   confirmação manual de pagamento (RF04.5). Lotes/cupons ficam para depois.
  * COMPONENTES: PageHeader, Table + Dialog (InscricoesGestao), Chip, EmptyState
- * DADOS: getEvento(slug), getInscricoesDoEvento(slug) (via @/lib/api)
+ * DADOS: getEvento(slug), getInscricoesDoEvento(slug) (via @/lib/api);
+ *   confirmarPagamentoAction (via ./actions, no mesmo processo do mock)
  * ESTADOS: vazio (EmptyState) / erro (Alert). loading em ./loading.tsx (se houver).
  * DONE: responsivo, tokens do tema, estados cobertos.
  */
