@@ -49,6 +49,7 @@ services:
     environment:
       HOSTNAME: 0.0.0.0 # Pra aceitar conexões fora do container
       PORT: 3001        # Força o Next.js a rodar na porta 3001 interna
+      NEXT_PUBLIC_API_URL: http://backend:3000 # SSR alcança o backend pela rede do compose
     networks:
       - acadevent_network
   
