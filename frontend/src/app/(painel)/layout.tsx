@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import DashboardShell from "@/components/layout/DashboardShell";
-import { getSession, hasRole } from "@/lib/auth/session";
+import { getSession } from "@/lib/auth/session";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import PersonIcon from "@mui/icons-material/Person";
 import NotificationsIcon from "@mui/icons-material/Notifications";
@@ -13,10 +13,13 @@ import EventNoteIcon from "@mui/icons-material/EventNote";
  * gate barato; aqui resolvemos a sessão de fato e redirecionamos ao login se o
  * token estiver ausente/expirado (issue #41).
  */
-const itemsBase = [
+const items = [
   { label: "Início", href: "/painel", icon: <DashboardIcon /> },
   { label: "Perfil", href: "/painel/perfil", icon: <PersonIcon /> },
   { label: "Notificações", href: "/painel/notificacoes", icon: <NotificationsIcon /> },
+  // Porta de entrada para a gestão. Visível a qualquer usuário autenticado:
+  // listar/criar eventos é aberto (quem cria vira organizador do evento).
+  { label: "Gerenciar eventos", href: "/gerenciar/eventos", icon: <EventNoteIcon /> },
 ];
 
 export default async function PainelLayout({
@@ -26,18 +29,6 @@ export default async function PainelLayout({
 }) {
   const session = await getSession();
   if (!session) redirect("/login");
-
-  // Porta de entrada para a gestão: só aparece para quem pode gerenciar.
-  const items = hasRole(session, ["organizador", "comissao", "admin"])
-    ? [
-        ...itemsBase,
-        {
-          label: "Gerenciar eventos",
-          href: "/gerenciar/eventos",
-          icon: <EventNoteIcon />,
-        },
-      ]
-    : itemsBase;
 
   return (
     <DashboardShell sidebarTitle="Meu painel" items={items}>
