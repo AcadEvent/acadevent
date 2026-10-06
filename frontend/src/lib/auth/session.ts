@@ -41,11 +41,22 @@ export async function getSession(): Promise<Session | null> {
   }
 }
 
+/**
+ * Normaliza um perfil para comparação: minúsculas e `administrador` → `admin`.
+ * O backend devolve os perfis por extenso e em formas que divergem do tipo
+ * `PerfilUsuario` da UI (ex.: "administrador"); normalizar evita falso-negativo.
+ */
+function normalizarPerfil(p: string): string {
+  const v = p.toLowerCase();
+  return v === "administrador" ? "admin" : v;
+}
+
 /** True se a sessão possui ao menos um dos perfis exigidos (RBAC, RF02.1.2). */
 export function hasRole(
   session: Session | null,
   perfis: PerfilUsuario[],
 ): boolean {
   if (!session) return false;
-  return session.perfis.some((p) => perfis.includes(p));
+  const meus = new Set(session.perfis.map(normalizarPerfil));
+  return perfis.some((p) => meus.has(normalizarPerfil(p)));
 }
