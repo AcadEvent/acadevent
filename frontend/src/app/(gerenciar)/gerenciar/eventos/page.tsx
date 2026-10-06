@@ -31,8 +31,9 @@ import { useEffect, useState } from "react";
 
 import PageHeader from "@/components/layout/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
-import { getEventosOrganizador } from "@/lib/api";
 import type { Evento, StatusEvento } from "@/lib/types";
+
+import { listarMeusEventosAction } from "./actions";
 
 const STATUS_LABEL: Record<StatusEvento, string> = {
   rascunho: "Rascunho",
@@ -184,7 +185,7 @@ export default function EventosOrganizadorPage() {
   useEffect(() => {
     let ativo = true;
 
-    getEventosOrganizador()
+    listarMeusEventosAction()
       .then((resultado) => {
         if (ativo) {
           setEventos(resultado);

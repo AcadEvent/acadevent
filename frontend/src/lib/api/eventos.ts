@@ -91,6 +91,20 @@ export function getEventosOrganizador(): Promise<Evento[]> {
   return fake(mockEventos);
 }
 
+/**
+ * Eventos que o usuário autenticado organiza (GET /eventos/gerenciar/meus, RF03.2).
+ * Precisa do Bearer — use via Server Action que resolve o token da sessão.
+ */
+export async function getEventosGerenciaveis(token: string): Promise<Evento[]> {
+  const res = await fetch(`${API_URL}/eventos/gerenciar/meus`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Não foi possível carregar seus eventos.");
+  const dados = (await res.json()) as EdicaoApi[];
+  return dados.map(edicaoToEvento);
+}
+
 /** Eventos dos quais o participante autenticado faz parte (RF03.1.1). */
 export function getMeusEventos(): Promise<Evento[]> {
   return fake(
