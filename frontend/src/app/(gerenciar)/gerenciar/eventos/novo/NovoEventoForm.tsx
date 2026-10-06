@@ -26,8 +26,7 @@ import { useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
-import { postEvento } from "@/lib/api";
-import type { Evento } from "@/lib/types";
+import { criarEventoAction } from "./actions";
 
 const TAMANHO_MAX_IMAGEM = 5 * 1024 * 1024;
 const TIPOS_IMAGEM = new Set([
@@ -182,32 +181,26 @@ export default function NovoEventoForm() {
   const onSubmit = handleSubmit(async (dados) => {
     setErroEnvio(null);
 
-    const payload: Omit<Evento, "slug" | "status" | "inscricao"> = {
+    // Formata em hora local SEM converter para UTC: `toISOString()` deslocava
+    // o fim do dia para o dia seguinte em UTC-3 e o banco (TIMESTAMP WITHOUT
+    // TIME ZONE) gravava a data com um dia a mais (issue #43.3).
+    const resultado = await criarEventoAction({
       nome: dados.nome,
       sigla: dados.sigla,
       edicao: dados.edicao,
       instituicao: dados.instituicao,
       descricao: valorOpcional(dados.descricao),
       areaTematica: valorOpcional(dados.areaTematica),
-      publicoAlvo: valorOpcional(dados.publicoAlvo),
       local: dados.local,
-      logoUrl: dados.logoUrl,
-      bannerUrl: dados.bannerUrl,
-      // Formata em hora local SEM converter para UTC: `toISOString()` deslocava
-      // o fim do dia para o dia seguinte em UTC-3 e o banco (TIMESTAMP WITHOUT
-      // TIME ZONE) gravava a data com um dia a mais (issue #43.3).
       inicio: dayjs(dados.inicio).startOf("day").format("YYYY-MM-DDTHH:mm:ss"),
       fim: dayjs(dados.fim).endOf("day").format("YYYY-MM-DDTHH:mm:ss"),
-    };
+    });
 
-    try {
-      const evento = await postEvento(payload);
-      router.push(`/gerenciar/${evento.slug}`);
-    } catch {
-      setErroEnvio(
-        "Não foi possível criar o evento. Revise os dados e tente novamente.",
-      );
+    if (!resultado.ok) {
+      setErroEnvio(resultado.erro);
+      return;
     }
+    router.push(`/gerenciar/${resultado.slug}`);
   });
 
   return (
