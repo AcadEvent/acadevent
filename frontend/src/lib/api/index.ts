@@ -20,4 +20,7 @@ export * from "./pagamentos";
 export * from "./espacos";
 export * from "./inventario";
 export * from "./painel";
+export * from "./comunicacao";
+export * from "./logs";
+export * from "./materiais";
 

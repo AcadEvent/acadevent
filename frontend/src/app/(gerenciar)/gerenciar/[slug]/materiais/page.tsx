@@ -1,23 +1,48 @@
 /**
  * ROTA: /gerenciar/[slug]/materiais
  * OWNER: Arthur   RF: RF10.1   PRIORIDADE: MVP
- * PROPÓSITO: Repositório de conteúdo digital do evento.
- * COMPONENTES: upload, List
- * DADOS: getMateriais(slug) (via src/lib/api — nunca fetch direto)
- * ESTADOS: loading (Skeleton) / vazio (EmptyState) / erro (Alert)
- * DONE: responsivo, usa tokens do tema (sem cor hardcoded), estados cobertos,
- *   este placeholder substituído por conteúdo real. Ver docs/atribuicoes.md.
+ * PROPÓSITO: Upload de conteúdo digital do evento (PDF, slides, imagens).
+ * COMPONENTES: PageHeader, MaterialUpload, Alert
+ * DADOS: upload via Server Action (POST /storage/upload, JWT). Ver @/lib/api.
+ * ESTADOS: erro/sucesso dentro do MaterialUpload.
+ * DONE: responsivo, tokens do tema. NOTA: o backend de storage é genérico —
+ *   não há endpoint para LISTAR materiais por evento (limitação documentada).
  */
-import PagePlaceholder from "@/components/ui/PagePlaceholder";
+import type { Metadata } from "next";
 
-export default function Page() {
+import Alert from "@mui/material/Alert";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+
+import PageHeader from "@/components/layout/PageHeader";
+import MaterialUpload from "@/components/domain/MaterialUpload";
+
+import { uploadMaterialAction } from "./actions";
+
+export const metadata: Metadata = { title: "Materiais" };
+
+export default async function MateriaisPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  await params;
+
   return (
-    <PagePlaceholder
-      title={"Materiais"}
-      owner={"Arthur"}
-      rf={"RF10.1"}
-      priority={"MVP"}
-      summary={"Repositório de conteúdo digital do evento."}
-    />
+    <>
+      <PageHeader
+        title="Materiais"
+        subtitle="Envie PDFs, slides e imagens do evento"
+      />
+      <Card variant="outlined">
+        <CardContent>
+          <MaterialUpload onUploadAction={uploadMaterialAction} />
+        </CardContent>
+      </Card>
+      <Alert severity="info" sx={{ mt: 3 }}>
+        A listagem de materiais por evento depende de evolução do backend (o
+        storage atual só expõe upload e download por link).
+      </Alert>
+    </>
   );
 }
