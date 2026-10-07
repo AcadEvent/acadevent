@@ -2,13 +2,12 @@ import Box from "@mui/material/Box";
 import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
-import Button from "@mui/material/Button";
 import Link from "@mui/material/Link";
-import LogoutIcon from "@mui/icons-material/Logout";
 import SchoolIcon from "@mui/icons-material/School";
 import Sidebar, { type SidebarItem } from "./Sidebar";
 
-import { sairAction } from "@/lib/auth/actions";
+import { getSession } from "@/lib/auth/session";
+import MenuUsuario from "./MenuUsuario";
 
 export interface DashboardShellProps {
   sidebarTitle: string;
@@ -18,14 +17,16 @@ export interface DashboardShellProps {
 
 /**
  * Shell das áreas autenticadas (painel, gerenciar, admin): barra superior fina +
- * navegação lateral + conteúdo. A navegação escopada por evento ([slug]) é
- * acrescentada dentro das próprias páginas de evento (TODO dos donos).
+ * navegação lateral + conteúdo. Mostra o usuário logado (avatar + nome + Sair)
+ * na barra. A navegação escopada por evento ([slug]) é acrescentada dentro das
+ * próprias páginas de evento (TODO dos donos).
  */
-export default function DashboardShell({
+export default async function DashboardShell({
   sidebarTitle,
   items,
   children,
 }: DashboardShellProps) {
+  const session = await getSession();
   return (
     <Box sx={{ minHeight: "100dvh", display: "flex", flexDirection: "column" }}>
       <AppBar position="sticky" color="inherit" elevation={0} sx={{ borderBottom: 1, borderColor: "divider" }}>
@@ -41,19 +42,7 @@ export default function DashboardShell({
             </Typography>
           </Link>
           <Box sx={{ flexGrow: 1 }} />
-          <Button href="/painel" color="inherit" size="small">
-            Meu painel
-          </Button>
-          <Box component="form" action={sairAction}>
-            <Button
-              type="submit"
-              color="inherit"
-              size="small"
-              startIcon={<LogoutIcon />}
-            >
-              Sair
-            </Button>
-          </Box>
+          {session && <MenuUsuario nome={session.nome} />}
         </Toolbar>
       </AppBar>
 

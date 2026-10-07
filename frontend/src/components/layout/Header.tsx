@@ -8,17 +8,21 @@ import Box from "@mui/material/Box";
 import Link from "@mui/material/Link";
 import SchoolIcon from "@mui/icons-material/School";
 
+import { getSession } from "@/lib/auth/session";
+import MenuUsuario from "./MenuUsuario";
+
 const NAV = [
   { label: "Eventos", href: "/eventos" },
   { label: "Sobre", href: "/sobre" },
 ];
 
 /**
- * Cabeçalho público (área não autenticada). Composto de AppBar + Toolbar.
- * TODO(auth): trocar os botões Entrar/Cadastrar por avatar do usuário quando a
- * sessão existir (src/lib/auth/session.ts).
+ * Cabeçalho público. Mostra Entrar/Cadastrar quando não há sessão e, quando há,
+ * o indicador de usuário (avatar + nome + Sair) — assim o estado de login fica
+ * visível também fora das áreas autenticadas.
  */
-export default function Header() {
+export default async function Header() {
+  const session = await getSession();
   return (
     <AppBar position="sticky" color="inherit" elevation={0} sx={{ borderBottom: 1, borderColor: "divider" }}>
       <Container maxWidth="lg">
@@ -44,14 +48,18 @@ export default function Header() {
 
           <Box sx={{ flexGrow: 1 }} />
 
-          <Stack direction="row" spacing={1}>
-            <Button href="/login" color="inherit">
-              Entrar
-            </Button>
-            <Button href="/cadastro" variant="contained">
-              Cadastrar
-            </Button>
-          </Stack>
+          {session ? (
+            <MenuUsuario nome={session.nome} />
+          ) : (
+            <Stack direction="row" spacing={1}>
+              <Button href="/login" color="inherit">
+                Entrar
+              </Button>
+              <Button href="/cadastro" variant="contained">
+                Cadastrar
+              </Button>
+            </Stack>
+          )}
         </Toolbar>
       </Container>
     </AppBar>

@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import { cookies } from "next/headers";
 
 import type { PerfilUsuario } from "@/lib/types";
@@ -28,7 +30,11 @@ export async function getToken(): Promise<string | null> {
   return (await cookies()).get(COOKIE_SESSAO)?.value ?? null;
 }
 
-export async function getSession(): Promise<Session | null> {
+/**
+ * Memoizado por request (`cache`): layout, shell e header resolvem a mesma
+ * sessão sem repetir o GET /auth/me na mesma renderização.
+ */
+export const getSession = cache(async (): Promise<Session | null> => {
   const token = (await cookies()).get(COOKIE_SESSAO)?.value;
   if (!token) return null;
 
@@ -39,7 +45,7 @@ export async function getSession(): Promise<Session | null> {
     // Token ausente/expirado/inválido → tratado como não autenticado.
     return null;
   }
-}
+});
 
 /**
  * Normaliza um perfil para comparação: minúsculas e `administrador` → `admin`.
