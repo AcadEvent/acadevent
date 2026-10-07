@@ -6,7 +6,7 @@
  *   (RF05.4). Requer autenticação (sessão checada na página).
  * COMPONENTES: Container, PageHeader, Stepper, Card, Checkbox, Alert(conflito),
  *   AtividadesForm (local)
- * DADOS: getEvento(slug), getAtividades(slug), getMinistrantes(slug)
+ * DADOS: getEvento(slug), getCronograma(idEdicao) (ministrantes embutidos)
  *   (via src/lib/api — nunca fetch direto)
  * ESTADOS: loading (Skeleton, em ./loading.tsx) / vazio (EmptyState) / erro (Alert)
  * DONE: responsivo, usa tokens do tema (sem cor hardcoded), estados cobertos,
@@ -35,7 +35,7 @@ import PlaceIcon from "@mui/icons-material/Place";
 
 import EmptyState from "@/components/ui/EmptyState";
 import PageHeader from "@/components/layout/PageHeader";
-import { getAtividades, getEvento, getMinistrantes } from "@/lib/api";
+import { getCronograma, getEvento } from "@/lib/api";
 import type { Atividade, Evento, Ministrante } from "@/lib/types";
 
 import { BLOQUEIO, PASSOS } from "../wizard";
@@ -77,11 +77,15 @@ export default async function InscricaoAtividadesPage({
   let atividades: Atividade[];
   let ministrantes: Ministrante[];
   try {
-    [evento, atividades, ministrantes] = await Promise.all([
-      getEvento(slug),
-      getAtividades(slug),
-      getMinistrantes(slug),
-    ]);
+    evento = await getEvento(slug);
+    // Programação real da edição (cronograma); vazio = evento sem atividades
+    // ainda. Os ministrantes vêm embutidos em cada atividade.
+    atividades = evento?.idEdicao ? await getCronograma(evento.idEdicao) : [];
+    ministrantes = Array.from(
+      new Map(
+        atividades.flatMap((a) => a.ministrantes ?? []).map((m) => [m.id, m]),
+      ).values(),
+    );
   } catch {
     return (
       <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>

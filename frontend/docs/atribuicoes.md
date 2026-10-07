@@ -1,7 +1,7 @@
 # Atribuições do Frontend — AcadEvent
 
-Versão: 1.5
-Data: 2026-09-21
+Versão: 1.6
+Data: 2026-10-06
 Autor: Guilherme Zanan Piveta (SFE)
 Revisores: —
 
@@ -118,32 +118,34 @@ Todo `page.tsx` começa com este bloco (já preenchido nos stubs):
 
 ## 5. Acompanhamento (checklist de rotas)
 
-Atualize o status ao concluir. Legenda: ⬜ a fazer · 🟨 em andamento · ✅ pronto.
+Atualize o status ao concluir. Legenda: ⬜ a fazer · 🟨 UI pronta, mas em
+dados mock / bloqueada por lacuna do backend (ver issues) · ✅ pronto, consumindo
+a API real.
 
 ### Guilherme — fundação e público (referência)
-- ✅ `/` landing · ✅ `/eventos` · ⬜ `/eventos/[slug]`
+- ✅ `/` landing · ✅ `/eventos` · ✅ `/eventos/[slug]`
 - ⬜ `/sobre` · ⬜ `/termos` · ⬜ `/privacidade`
 
 ### Kauan — autenticação e painel
 - ✅ `/login` · ✅ `/cadastro` · ⬜ `/recuperar-senha` · ⬜ `/redefinir-senha/[token]`
-- ✅ `/painel` · ⬜ `/painel/perfil` · ⬜ `/painel/notificacoes`
-- ✅ `/painel/eventos/[slug]` (visão geral) · ⬜ (+ grade, inscricoes, recibos, certificados,
-  submissoes, submissoes/nova, atividades/[id]/materiais)
+- 🟨 `/painel` (hub; "Meus eventos" sem endpoint de leitura — #122) · ⬜ `/painel/perfil` · ✅ `/painel/notificacoes`
+- 🟨 `/painel/eventos/[slug]` (visão geral; dados mock) · 🟨 `/painel/eventos/[slug]/atividades/[id]/materiais` (upload ok; publicação/listagem bloqueada — #88)
+- ⬜ grade · inscricoes · recibos · certificados · submissoes (+ nova)
 - ⬜ ministrante (painel, perfil, presença, materiais, certificados) ·
   ⬜ escala (+ presenca) · ⬜ patrocinio
 
 ### Arthur — gestão do evento
-- ⬜ `/gerenciar/eventos` · ⬜ `/gerenciar/eventos/novo` · ⬜ `/gerenciar/[slug]`
-- ⬜ configuracoes · prazos · modulos · atividades · espacos · inscricoes ·
-  pagamentos · check-in · pessoas · escala · ministrantes · patrocinadores ·
-  submissoes (+ [id]/parecer) · materiais · inventario · comunicacao ·
-  divulgacao · certificados · relatorios
+- ✅ `/gerenciar/eventos` · ✅ `/gerenciar/eventos/novo` · ✅ `/gerenciar/[slug]` (dashboard)
+- ✅ atividades · ✅ lotes · ✅ pagamentos (relatório) · ✅ check-in · ✅ comunicacao
+- 🟨 materiais (upload ok; publicação/listagem bloqueada — #88) · 🟨 inscricoes (sem endpoint de lista — #118) · 🟨 espacos (reserva por atividade — #120) · 🟨 inventario (devolução por registro — #119)
+- ⬜ configuracoes · prazos · modulos · pessoas · escala · ministrantes ·
+  patrocinadores · submissoes (+ [id]/parecer) · divulgacao · certificados · relatorios
 
 ### Igor — evento (público), inscrição e admin
-- ⬜ cronograma · atividades (+ [id]) · ministrantes (+ [id]) · patrocinadores ·
-  anais · galeria · `/validar/[codigo]`
-- ✅ `/eventos/[slug]/inscricao` · ✅ (+ atividades, pagamento, confirmacao)
-- ⬜ `/admin` · `/admin/usuarios` · `/admin/eventos` · `/admin/logs`
+- ✅ `/eventos/[slug]/cronograma` · ✅ `/eventos/[slug]/atividades` (+ `/[id]`) · ✅ `/validar/[codigo]`
+- ⬜ ministrantes (+ [id]) · patrocinadores · anais · galeria
+- ✅ `/eventos/[slug]/inscricao` · ✅ `.../atividades` · ✅ `.../pagamento` · 🟨 `.../confirmacao` (recibo inline; releitura sem endpoint — #121)
+- ✅ `/admin/logs` · ⬜ `/admin` · ⬜ `/admin/usuarios` · ⬜ `/admin/eventos`
 
 ## 6. Fluxo de trabalho (Git)
 

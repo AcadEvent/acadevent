@@ -3,7 +3,7 @@
  * OWNER: Arthur   RF: RF03.2.1   PRIORIDADE: MVP
  * PROPÓSITO: Dashboard do organizador com indicadores do evento.
  * COMPONENTES: Grid, Card(KPI)
- * DADOS: getDashboard(slug) (via src/lib/api — nunca fetch direto)
+ * DADOS: carregarDashboardAction(slug) — compõe getEvento + relatório + cronograma
  * ESTADOS: loading (Skeleton) / vazio (EmptyState) / erro (Alert)
  * DONE: responsivo, usa tokens do tema (sem cor hardcoded), estados cobertos,
  *   este placeholder substituído por conteúdo real. Ver docs/atribuicoes.md.
@@ -17,6 +17,7 @@ import { useParams } from "next/navigation";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import ConfirmationNumberIcon from "@mui/icons-material/ConfirmationNumber";
 import CreditCardIcon from "@mui/icons-material/CreditCard";
 import EventNoteIcon from "@mui/icons-material/EventNote";
 import GroupsIcon from "@mui/icons-material/Groups";
@@ -41,8 +42,9 @@ import Typography from "@mui/material/Typography";
 
 import PageHeader from "@/components/layout/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
-import { getDashboard } from "@/lib/api";
 import type { DashboardEvento, StatusEvento } from "@/lib/types";
+
+import { carregarDashboardAction } from "./actions";
 
 const STATUS_LABEL: Record<StatusEvento, string> = {
   rascunho: "Rascunho",
@@ -224,6 +226,12 @@ function DashboardContent({ dashboard }: { dashboard: DashboardEvento }) {
       icon: <CalendarMonthIcon />,
     },
     {
+      titulo: "Lotes de ingresso",
+      descricao: "Defina ingressos e valores para abrir inscrições.",
+      href: `/gerenciar/${evento.slug}/lotes`,
+      icon: <ConfirmationNumberIcon />,
+    },
+    {
       titulo: "Pagamentos",
       descricao: "Consulte recebimentos e pendências.",
       href: `/gerenciar/${evento.slug}/pagamentos`,
@@ -397,7 +405,7 @@ export default function DashboardOrganizadorPage() {
   useEffect(() => {
     let ativo = true;
 
-    getDashboard(slug)
+    carregarDashboardAction(slug)
       .then((resultado) => {
         if (ativo) {
           setDashboard(resultado);

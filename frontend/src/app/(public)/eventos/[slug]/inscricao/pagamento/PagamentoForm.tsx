@@ -35,6 +35,7 @@ import {
 import type {
   Atividade,
   CupomAplicado,
+  InscricaoEdicao,
   LoteIngresso,
   MetodoPagamento,
 } from "@/lib/types";
@@ -140,6 +141,7 @@ export default function PagamentoForm({
   const [validandoCupom, setValidandoCupom] = useState(false);
   const [honeypot, setHoneypot] = useState("");
   const [erro, setErro] = useState<string | null>(null);
+  const [sucesso, setSucesso] = useState<InscricaoEdicao | null>(null);
 
   const lote = disponiveis.find((l) => l.id === loteId) ?? null;
   const subtotal = lote?.preco ?? 0;
@@ -191,13 +193,82 @@ export default function PagamentoForm({
           setErro(resultado.erro);
           return;
         }
-        router.push(
-          `/eventos/${eventoSlug}/inscricao/confirmacao?inscricao=${resultado.inscricao.id}`,
-        );
+        // Não há endpoint de releitura da inscrição (ver #121), então mostramos
+        // a confirmação aqui mesmo com o retorno da criação, sem navegar para
+        // uma página que precisaria rebuscar por id.
+        setSucesso(resultado.inscricao);
+        router.refresh();
       } catch {
         setErro("Não foi possível concluir a inscrição. Tente novamente.");
       }
     });
+  }
+
+  if (sucesso) {
+    const confirmado = sucesso.statusPagamento === "confirmado";
+    return (
+      <Card variant="outlined">
+        <CardContent>
+          <Stack
+            spacing={2}
+            sx={{ alignItems: "center", textAlign: "center", py: { xs: 2, sm: 4 } }}
+          >
+            <Box
+              sx={{
+                display: "inline-flex",
+                p: 1.5,
+                borderRadius: "50%",
+                bgcolor: "success.main",
+                color: "success.contrastText",
+              }}
+            >
+              <CheckIcon fontSize="large" />
+            </Box>
+            <Typography variant="h5" component="h2">
+              Inscrição realizada!
+            </Typography>
+            <Chip
+              label={confirmado ? "Pagamento confirmado" : "Pagamento pendente"}
+              color={confirmado ? "success" : "warning"}
+              size="small"
+            />
+            <Typography color="text.secondary" sx={{ maxWidth: 440 }}>
+              {confirmado
+                ? "Sua inscrição está confirmada. O recibo fica disponível no seu painel."
+                : "Registramos sua inscrição. Conclua o pagamento para confirmá-la — o status aparece no seu painel."}
+            </Typography>
+            <Stack
+              direction="row"
+              spacing={2}
+              sx={{
+                justifyContent: "space-between",
+                width: "100%",
+                maxWidth: 320,
+              }}
+            >
+              <Typography variant="body2" color="text.secondary">
+                Valor
+              </Typography>
+              <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                {moedaFmt.format(sucesso.valor)}
+              </Typography>
+            </Stack>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={2}
+              sx={{ mt: 1 }}
+            >
+              <Button href="/painel" variant="contained">
+                Ir para o meu painel
+              </Button>
+              <Button href={`/eventos/${eventoSlug}`} variant="text">
+                Voltar ao evento
+              </Button>
+            </Stack>
+          </Stack>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
