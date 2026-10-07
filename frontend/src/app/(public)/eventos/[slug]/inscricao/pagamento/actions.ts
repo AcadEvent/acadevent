@@ -1,7 +1,7 @@
 "use server";
 
 import { criarInscricao, type ResultadoInscricao } from "@/lib/api";
-import { getSession } from "@/lib/auth/session";
+import { getSession, getToken } from "@/lib/auth/session";
 import type { NovaInscricao } from "@/lib/types";
 
 /**
@@ -20,6 +20,10 @@ export async function finalizarInscricao(
     return { ok: false, erro: "Não foi possível concluir a inscrição." };
   }
 
+  const token = await getToken();
+  if (!token) {
+    return { ok: false, erro: "Sua sessão expirou. Entre novamente." };
+  }
   const sessao = await getSession();
-  return criarInscricao({ ...input, participante: sessao?.nome });
+  return criarInscricao(token, { ...input, participante: sessao?.nome });
 }

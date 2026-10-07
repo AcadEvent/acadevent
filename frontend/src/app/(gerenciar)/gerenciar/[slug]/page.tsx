@@ -17,6 +17,7 @@ import { useParams } from "next/navigation";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import ConfirmationNumberIcon from "@mui/icons-material/ConfirmationNumber";
 import CreditCardIcon from "@mui/icons-material/CreditCard";
 import EventNoteIcon from "@mui/icons-material/EventNote";
 import GroupsIcon from "@mui/icons-material/Groups";
@@ -223,6 +224,12 @@ function DashboardContent({ dashboard }: { dashboard: DashboardEvento }) {
       descricao: "Organize a programação do evento.",
       href: `/gerenciar/${evento.slug}/atividades`,
       icon: <CalendarMonthIcon />,
+    },
+    {
+      titulo: "Lotes de ingresso",
+      descricao: "Defina ingressos e valores para abrir inscrições.",
+      href: `/gerenciar/${evento.slug}/lotes`,
+      icon: <ConfirmationNumberIcon />,
     },
     {
       titulo: "Pagamentos",

@@ -127,7 +127,8 @@ export default async function InscricaoPage({
   let evento: Evento | null;
   let lotes: LoteIngresso[];
   try {
-    [evento, lotes] = await Promise.all([getEvento(slug), getLotes(slug)]);
+    evento = await getEvento(slug);
+    lotes = evento?.idEdicao ? await getLotes(evento.idEdicao) : [];
   } catch {
     return (
       <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>

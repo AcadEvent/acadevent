@@ -8,13 +8,75 @@ import type {
   LoteIngresso,
   NovaInscricao,
   ResultadoCheckin,
+  StatusPagamento,
 } from "@/lib/types";
-import { mockCupons, mockInscricoes, mockLotes } from "@/lib/mock/inscricoes";
-import { fake } from "./_client";
+import { mockCupons, mockInscricoes } from "@/lib/mock/inscricoes";
+import { ErroRequisicao, fake, requestAutenticado } from "./_client";
+import { API_URL } from "./_client";
 
-/** Lotes de ingresso da edição, do mais antigo para o mais recente (RF04.2). */
-export function getLotes(eventoSlug: string): Promise<LoteIngresso[]> {
-  return fake(mockLotes.filter((l) => l.eventoSlug === eventoSlug));
+interface LoteApi {
+  id_lote: number;
+  id_edicao: number;
+  nome_lote: string;
+  preco: string | number;
+  numero_max_ingressos: number;
+  data_abertura_lote?: string | null;
+  data_encerramento_lote?: string | null;
+}
+
+function toLote(l: LoteApi): LoteIngresso {
+  return {
+    id: String(l.id_lote),
+    eventoSlug: String(l.id_edicao),
+    nome: l.nome_lote,
+    preco: typeof l.preco === "string" ? Number(l.preco) : l.preco,
+    abertura: l.data_abertura_lote ?? undefined,
+    encerramento: l.data_encerramento_lote ?? undefined,
+    vagas: l.numero_max_ingressos,
+  };
+}
+
+/**
+ * Lotes de ingresso da edição (RF04.2). GET /inscricoes/lotes/edicao/:id é
+ * público (a vitrine de inscrição é aberta). `vagasRestantes` não é exposto
+ * pela API ainda, então cai em `vagas` (numero_max_ingressos).
+ */
+export async function getLotes(idEdicao: number): Promise<LoteIngresso[]> {
+  const res = await fetch(`${API_URL}/inscricoes/lotes/edicao/${idEdicao}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Não foi possível carregar os lotes.");
+  const dados = (await res.json()) as LoteApi[];
+  return dados.map(toLote);
+}
+
+export interface NovoLote {
+  nome: string;
+  preco: number;
+  vagas: number;
+  abertura?: string;
+  encerramento?: string;
+}
+
+/** Cria um lote de ingresso na edição (RF04.2, organizador). */
+export async function criarLote(
+  token: string,
+  idEdicao: number,
+  input: NovoLote,
+): Promise<LoteIngresso> {
+  const body: Record<string, unknown> = {
+    id_edicao: idEdicao,
+    nome_lote: input.nome,
+    preco: input.preco,
+    numero_max_ingressos: input.vagas,
+  };
+  if (input.abertura) body.data_abertura_lote = input.abertura;
+  if (input.encerramento) body.data_encerramento_lote = input.encerramento;
+  const l = await requestAutenticado<LoteApi>("/inscricoes/lotes", token, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  return toLote(l);
 }
 
 /** Vagas ainda disponíveis no lote. */
@@ -93,79 +155,62 @@ export type ResultadoInscricao =
   | { ok: true; inscricao: InscricaoEdicao }
   | { ok: false; erro: string };
 
+interface InscricaoApi {
+  inscricao: {
+    id_inscricao_edicao: number;
+    status?: string | null;
+    url_qrcode?: string | null;
+  };
+  pagamento?: { valor?: string | number | null } | null;
+}
+
 /**
- * Registra a inscrição na edição (RF04.2–4). Revalida lote, cupom e token no
- * "servidor" — o que veio do navegador não é confiável. Inscrição gratuita já
- * nasce confirmada; paga fica pendente até a confirmação do pagamento (RF04.5).
+ * Registra a inscrição na edição (RF04.2–4). POST /inscricoes é autenticado: o
+ * participante atual vem do token. O backend valida lote/cupom e já cria um
+ * pagamento (pendente, ou confirmado se gratuito). Devolve a inscrição criada —
+ * não há endpoint de releitura (ver #121), então o recibo usa este retorno.
  */
 export async function criarInscricao(
+  token: string,
   input: NovaInscricao,
 ): Promise<ResultadoInscricao> {
-  if (!tokensCheckout.has(input.tokenCheckout)) {
-    return {
-      ok: false,
-      erro: "Sua sessão de pagamento expirou. Recarregue a página e tente de novo.",
+  try {
+    const r = await requestAutenticado<InscricaoApi>("/inscricoes", token, {
+      method: "POST",
+      body: JSON.stringify({
+        id_lote: Number(input.loteId),
+        ...(input.cupom ? { codigo_cupom: input.cupom.trim() } : {}),
+      }),
+    });
+
+    const statusPagamento: StatusPagamento =
+      (r.inscricao.status ?? "").toLowerCase() === "confirmada"
+        ? "confirmado"
+        : "pendente";
+    const valor = r.pagamento?.valor != null ? Number(r.pagamento.valor) : 0;
+    const agora = new Date().toISOString();
+
+    const inscricao: InscricaoEdicao = {
+      id: String(r.inscricao.id_inscricao_edicao),
+      codigo: r.inscricao.url_qrcode ?? String(r.inscricao.id_inscricao_edicao),
+      eventoSlug: input.eventoSlug,
+      participante: input.participante ?? "Participante",
+      statusPagamento,
+      loteId: input.loteId,
+      valor,
+      metodoPagamento: input.metodoPagamento,
+      atividadesIds: input.atividadesIds,
+      criadaEm: agora,
+      pagaEm: statusPagamento === "confirmado" ? agora : undefined,
     };
+    return { ok: true, inscricao };
+  } catch (e) {
+    const erro =
+      e instanceof ErroRequisicao
+        ? e.message
+        : "Não foi possível concluir a inscrição. Tente novamente.";
+    return { ok: false, erro };
   }
-
-  const lote = mockLotes.find(
-    (l) => l.id === input.loteId && l.eventoSlug === input.eventoSlug,
-  );
-  if (!lote || !loteDisponivel(lote)) {
-    return { ok: false, erro: "O lote escolhido não está mais disponível." };
-  }
-
-  let cupom: CupomAplicado | undefined;
-  if (input.cupom) {
-    const resultado = await aplicarCupom(input.eventoSlug, input.cupom, lote.preco);
-    if (!resultado.ok) return resultado;
-    cupom = resultado.cupom;
-  }
-
-  const valor = Math.max(0, lote.preco - (cupom?.desconto ?? 0));
-  if (valor > 0 && input.metodoPagamento === "gratuito") {
-    return { ok: false, erro: "Escolha uma forma de pagamento." };
-  }
-
-  // Tudo validado: só agora o token é gasto e as vagas/usos são debitados, para
-  // que um erro corrigível (ex.: cupom vencido) não obrigue a recarregar a página.
-  // O delete é checado de novo porque dois envios simultâneos podem ter passado
-  // pelo `has` lá em cima.
-  if (!tokensCheckout.delete(input.tokenCheckout)) {
-    return { ok: false, erro: "Esta inscrição já foi enviada." };
-  }
-  lote.vagasRestantes = vagasDoLote(lote) - 1;
-  const registroCupom = mockCupons.find(
-    (c) => c.eventoSlug === input.eventoSlug && c.codigo === cupom?.codigo,
-  );
-  if (registroCupom) registroCupom.usosRestantes -= 1;
-
-  const agora = new Date().toISOString();
-  const sequencial = String(mockInscricoes.length + 1).padStart(4, "0");
-  // "sitc-2026" → "SITC26"
-  const [sigla, ...resto] = input.eventoSlug.split("-");
-  const ano = resto.find((p) => /^\d{4}$/.test(p))?.slice(2) ?? "";
-  const prefixo = `${sigla.toUpperCase()}${ano}`;
-  const inscricao: InscricaoEdicao = {
-    id: `insc-${crypto.randomUUID().slice(0, 8)}`,
-    codigo: `${prefixo}-${sequencial}`,
-    eventoSlug: input.eventoSlug,
-    participante: input.participante ?? "Participante",
-    statusPagamento: valor === 0 ? "confirmado" : "pendente",
-    loteId: lote.id,
-    loteNome: lote.nome,
-    valorBruto: lote.preco,
-    cupom,
-    valor,
-    metodoPagamento: valor === 0 ? "gratuito" : input.metodoPagamento,
-    atividadesIds: input.atividadesIds,
-    criadaEm: agora,
-    pagaEm: valor === 0 ? agora : undefined,
-  };
-  mockInscricoes.push(inscricao);
-
-  // TODO(api): o backend dispara o e-mail de confirmação (RF09.1).
-  return { ok: true, inscricao };
 }
 
 export function getInscricao(id: string): Promise<InscricaoEdicao | null> {
