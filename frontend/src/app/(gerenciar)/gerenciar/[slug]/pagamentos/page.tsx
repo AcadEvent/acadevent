@@ -26,6 +26,7 @@ import Typography from "@mui/material/Typography";
 import PageHeader from "@/components/layout/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
 import { getEvento, getRelatorioFinanceiro } from "@/lib/api";
+import { getToken } from "@/lib/auth/session";
 import type { Evento, MetodoPagamento, RelatorioFinanceiro } from "@/lib/types";
 
 const moeda = new Intl.NumberFormat("pt-BR", {
@@ -54,10 +55,20 @@ export default async function PagamentosPage({
   let evento: Evento | null;
   let relatorio: RelatorioFinanceiro;
   try {
-    [evento, relatorio] = await Promise.all([
-      getEvento(slug),
-      getRelatorioFinanceiro(slug),
-    ]);
+    evento = await getEvento(slug);
+    const token = await getToken();
+    relatorio =
+      token && evento?.idEdicao
+        ? await getRelatorioFinanceiro(token, evento.idEdicao)
+        : {
+            totalInscricoes: 0,
+            confirmadas: 0,
+            pendentes: 0,
+            canceladas: 0,
+            receitaConfirmada: 0,
+            receitaPendente: 0,
+            porMetodo: [],
+          };
   } catch {
     return (
       <Alert severity="error">
