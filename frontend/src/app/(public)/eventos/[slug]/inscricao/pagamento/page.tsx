@@ -7,7 +7,7 @@
  *   Requer autenticação (sessão checada na página).
  * COMPONENTES: Container, PageHeader, Stepper, RadioGroup(lote/pagamento),
  *   TextField(cupom), PagamentoForm (local)
- * DADOS: getEvento(slug), getLotes(slug), getCronograma(idEdicao),
+ * DADOS: getEvento(slug), getLotes(slug), getAtividades(slug),
  *   emitirTokenCheckout(), aplicarCupom(), criarInscricao() via Server Action
  *   (via src/lib/api — nunca fetch direto)
  * ESTADOS: loading (Skeleton, em ./loading.tsx) / vazio (EmptyState) / erro (Alert)
@@ -28,7 +28,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import PageHeader from "@/components/layout/PageHeader";
 import {
   emitirTokenCheckout,
-  getCronograma,
+  getAtividades,
   getEvento,
   getLotes,
 } from "@/lib/api";
@@ -66,10 +66,10 @@ export default async function InscricaoPagamentoPage({
   let lotes: LoteIngresso[];
   let atividades: Atividade[];
   try {
-    evento = await getEvento(slug);
-    [lotes, atividades] = await Promise.all([
+    [evento, lotes, atividades] = await Promise.all([
+      getEvento(slug),
       getLotes(slug),
-      evento?.idEdicao ? getCronograma(evento.idEdicao) : Promise.resolve([]),
+      getAtividades(slug),
     ]);
   } catch {
     return (
