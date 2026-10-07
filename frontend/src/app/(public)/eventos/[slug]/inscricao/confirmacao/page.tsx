@@ -6,7 +6,7 @@
  *   Recebe `?inscricao=<id>` do passo de pagamento.
  * COMPONENTES: Container, PageHeader, Stepper, Alert(status), Card(recibo),
  *   ImprimirReciboButton (local)
- * DADOS: getInscricao(id), getEvento(slug), getAtividades(slug)
+ * DADOS: getInscricao(id), getEvento(slug), getCronograma(idEdicao)
  *   (via src/lib/api — nunca fetch direto)
  * ESTADOS: loading (Skeleton, em ./loading.tsx) / vazio (EmptyState) / erro (Alert)
  * DONE: responsivo, usa tokens do tema (sem cor hardcoded), estados cobertos,
@@ -34,7 +34,7 @@ import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 
 import EmptyState from "@/components/ui/EmptyState";
 import PageHeader from "@/components/layout/PageHeader";
-import { getAtividades, getEvento, getInscricao } from "@/lib/api";
+import { getCronograma, getEvento, getInscricao } from "@/lib/api";
 import type {
   Atividade,
   Evento,
@@ -183,10 +183,10 @@ export default async function InscricaoConfirmacaoPage({
   let inscricao: InscricaoEdicao | null;
   let atividades: Atividade[];
   try {
-    [evento, inscricao, atividades] = await Promise.all([
-      getEvento(slug),
+    evento = await getEvento(slug);
+    [inscricao, atividades] = await Promise.all([
       inscricaoId ? getInscricao(inscricaoId) : Promise.resolve(null),
-      getAtividades(slug),
+      evento?.idEdicao ? getCronograma(evento.idEdicao) : Promise.resolve([]),
     ]);
   } catch {
     return (
