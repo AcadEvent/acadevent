@@ -3,7 +3,7 @@
  * OWNER: Arthur   RF: RF03.2.1   PRIORIDADE: MVP
  * PROPÓSITO: Dashboard do organizador com indicadores do evento.
  * COMPONENTES: Grid, Card(KPI)
- * DADOS: getDashboard(slug) (via src/lib/api — nunca fetch direto)
+ * DADOS: carregarDashboardAction(slug) — compõe getEvento + relatório + cronograma
  * ESTADOS: loading (Skeleton) / vazio (EmptyState) / erro (Alert)
  * DONE: responsivo, usa tokens do tema (sem cor hardcoded), estados cobertos,
  *   este placeholder substituído por conteúdo real. Ver docs/atribuicoes.md.
@@ -41,8 +41,9 @@ import Typography from "@mui/material/Typography";
 
 import PageHeader from "@/components/layout/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
-import { getDashboard } from "@/lib/api";
 import type { DashboardEvento, StatusEvento } from "@/lib/types";
+
+import { carregarDashboardAction } from "./actions";
 
 const STATUS_LABEL: Record<StatusEvento, string> = {
   rascunho: "Rascunho",
@@ -397,7 +398,7 @@ export default function DashboardOrganizadorPage() {
   useEffect(() => {
     let ativo = true;
 
-    getDashboard(slug)
+    carregarDashboardAction(slug)
       .then((resultado) => {
         if (ativo) {
           setDashboard(resultado);
