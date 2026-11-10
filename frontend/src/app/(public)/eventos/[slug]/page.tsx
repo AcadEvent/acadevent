@@ -8,7 +8,7 @@
  * DONE: responsivo, usa tokens do tema (sem cor hardcoded), estados cobertos,
  *   este placeholder substituído por conteúdo real. Ver docs/atribuicoes.md.
  */
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import type { Metadata } from "next";
 
 import Alert from "@mui/material/Alert";
@@ -388,22 +388,27 @@ export default async function EventoPage({
           <Grid size={{ xs: 12, md: 5 }}>
             <Card variant="outlined">
               <CardContent>
-                <Stack spacing={2} divider={<Divider flexItem />}>
-                  {infos.map((info) => (
-                    <Box
-                      key={info.label}
-                      sx={{ display: "flex", alignItems: "flex-start", gap: 1.5 }}
-                    >
-                      <Box sx={{ color: "primary.main", display: "inline-flex" }}>
-                        {info.icon}
+                <Stack spacing={2}>
+                  {infos.map((info, i) => (
+                    <Fragment key={info.label}>
+                      {/* Divider explícito: a prop `divider` do Stack recebendo
+                          um elemento cliente a partir de Server Component quebra
+                          a renderização ("Element type is invalid"). */}
+                      {i > 0 && <Divider />}
+                      <Box
+                        sx={{ display: "flex", alignItems: "flex-start", gap: 1.5 }}
+                      >
+                        <Box sx={{ color: "primary.main", display: "inline-flex" }}>
+                          {info.icon}
+                        </Box>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">
+                            {info.label}
+                          </Typography>
+                          <Typography variant="body2">{info.valor}</Typography>
+                        </Box>
                       </Box>
-                      <Box>
-                        <Typography variant="caption" color="text.secondary">
-                          {info.label}
-                        </Typography>
-                        <Typography variant="body2">{info.valor}</Typography>
-                      </Box>
-                    </Box>
+                    </Fragment>
                   ))}
                 </Stack>
 
