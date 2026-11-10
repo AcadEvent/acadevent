@@ -285,6 +285,137 @@ export class EventosService {
     return edicoes.map((e) => this.anexarSlug(e));
   }
 
+  /** Edicoes em que o usuario tem inscricao ativa (RF03.1.1). */
+  async listarPorParticipante(idUsuario: number) {
+    const edicoes = await this.prisma.edicao.findMany({
+      where: {
+        lotes: {
+          some: {
+            inscricoes: {
+              some: {
+                participante: { id_usuario: idUsuario },
+                status: { notIn: ['Cancelada', 'Estornada'] },
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        data_abertura_evento: 'desc',
+      },
+    });
+
+    return edicoes.map((e) => this.anexarSlug(e));
+  }
+
+  /**
+   * Painel pessoal do usuario em um evento (RF03.1.1): situacao da inscricao,
+   * papeis, grade de atividades e contadores de recibos/certificados.
+   * Responde 404 quando o usuario nao tem inscricao ativa na edicao.
+   */
+  async buscarPainelParticipante(idUsuario: number, slug: string) {
+    const edicao = this.anexarSlug(await this.buscarPorSlug(slug));
+
+    const inscricoes = await this.prisma.inscricaoEdicao.findMany({
+      where: {
+        participante: { id_usuario: idUsuario },
+        lote: { id_edicao: edicao.id_edicao },
+        status: { notIn: ['Cancelada', 'Estornada'] },
+      },
+      include: {
+        pagamentos: true,
+        inscricoesAtividades: {
+          where: { status: { not: 'Cancelada' } },
+          include: {
+            atividade: {
+              include: { reservas: { include: { espaco: true } } },
+            },
+          },
+        },
+      },
+      orderBy: { id_inscricao_edicao: 'asc' },
+    });
+
+    if (inscricoes.length === 0) {
+      throw new NotFoundException('Voce nao participa deste evento.');
+    }
+
+    const [certificados, comoMinistrante] = await Promise.all([
+      this.prisma.certificado.count({
+        where: { id_usuario: idUsuario, id_edicao: edicao.id_edicao },
+      }),
+      this.prisma.atividadeMinistrante.count({
+        where: {
+          ministrante: { id_usuario: idUsuario },
+          atividade: { id_edicao: edicao.id_edicao },
+        },
+      }),
+    ]);
+
+    const atividadesPorId = new Map<
+      number,
+      {
+        id: string;
+        titulo: string;
+        inicio: Date | null;
+        fim: Date | null;
+        local?: string;
+      }
+    >();
+    for (const inscricao of inscricoes) {
+      for (const item of inscricao.inscricoesAtividades) {
+        const { atividade } = item;
+        const reserva = atividade.reservas[0];
+        atividadesPorId.set(atividade.id_atividade, {
+          id: String(atividade.id_atividade),
+          titulo: atividade.titulo,
+          inicio:
+            atividade.data_abertura_atividade ?? reserva?.data_inicio ?? null,
+          fim:
+            atividade.data_encerramento_atividade ??
+            reserva?.data_final ??
+            null,
+          local: reserva?.espaco?.nome_sala ?? undefined,
+        });
+      }
+    }
+
+    const atividades = [...atividadesPorId.values()]
+      .map((a) => ({
+        ...a,
+        inicio: (a.inicio ?? edicao.data_abertura_evento)?.toISOString() ?? '',
+        fim: (a.fim ?? edicao.data_encerramento_evento)?.toISOString() ?? '',
+      }))
+      .sort((a, b) => a.inicio.localeCompare(b.inicio));
+
+    const confirmada = inscricoes.some((i) => i.status === 'Confirmada');
+
+    return {
+      slug: edicao.slug,
+      idEdicao: edicao.id_edicao,
+      nome: edicao.titulo_oficial,
+      sigla: edicao.sigla ?? undefined,
+      edicao: edicao.numero_edicao ?? undefined,
+      descricao: edicao.descricao_geral ?? undefined,
+      inicio: edicao.data_abertura_evento?.toISOString() ?? '',
+      fim: edicao.data_encerramento_evento?.toISOString() ?? '',
+      local: edicao.endereco ?? undefined,
+      statusInscricao: confirmada ? 'confirmada' : 'pendente',
+      papeis:
+        comoMinistrante > 0
+          ? ['participante', 'ministrante']
+          : ['participante'],
+      atividadesInscritas: atividades.length,
+      certificadosDisponiveis: certificados,
+      recibosDisponiveis: inscricoes
+        .flatMap((i) => i.pagamentos)
+        .filter((p) => Boolean(p.url_recibo)).length,
+      // TrabalhoAcademico nao tem vinculo com a edicao no schema atual.
+      submissoesEnviadas: 0,
+      atividades,
+    };
+  }
+
   async atualizarStatus(
     idEdicao: number,
     dto: AtualizarStatusDto,

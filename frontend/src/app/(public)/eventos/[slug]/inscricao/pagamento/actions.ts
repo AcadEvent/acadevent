@@ -1,8 +1,12 @@
 "use server";
 
-import { criarInscricao, type ResultadoInscricao } from "@/lib/api";
+import { criarInscricao, ErroApi, inscreverAtividade } from "@/lib/api";
 import { getSession, getToken } from "@/lib/auth/session";
-import type { NovaInscricao } from "@/lib/types";
+import type {
+  NovaInscricao,
+  ResultadoAtividadesInscricao,
+  ResultadoFinalizacao,
+} from "@/lib/types";
 
 /**
  * Finaliza o checkout no servidor (RF04.2–4, RF04.9). Roda como Server Action
@@ -10,12 +14,17 @@ import type { NovaInscricao } from "@/lib/types";
  * do navegador — e para que a inscrição fique no mesmo processo que a página de
  * confirmação lê. Os dados continuam passando só por src/lib/api.
  *
+ * Depois de criar a inscrição no evento, grava as atividades escolhidas no passo
+ * anterior (RF05.3, RF05.4). O backend só aceita inscrição em atividade com a
+ * inscrição no evento confirmada (gratuita ou paga): com pagamento pendente a
+ * escolha é devolvida em `pendentes` e o participante conclui pelo painel.
+ *
  * `honeypot` é um campo invisível do formulário: gente não preenche, robô sim.
  */
 export async function finalizarInscricao(
   input: Omit<NovaInscricao, "participante">,
   honeypot: string,
-): Promise<ResultadoInscricao> {
+): Promise<ResultadoFinalizacao> {
   if (honeypot) {
     return { ok: false, erro: "Não foi possível concluir a inscrição." };
   }
@@ -25,5 +34,39 @@ export async function finalizarInscricao(
     return { ok: false, erro: "Sua sessão expirou. Entre novamente." };
   }
   const sessao = await getSession();
-  return criarInscricao(token, { ...input, participante: sessao?.nome });
+  const resultado = await criarInscricao(token, {
+    ...input,
+    participante: sessao?.nome,
+  });
+  if (!resultado.ok) return resultado;
+
+  const atividades: ResultadoAtividadesInscricao = {
+    inscritas: [],
+    falhas: [],
+    pendentes: [],
+  };
+
+  if (resultado.inscricao.statusPagamento !== "confirmado") {
+    atividades.pendentes = [...input.atividadesIds];
+    return { ok: true, inscricao: resultado.inscricao, atividades };
+  }
+
+  // Em sequência: a regra de conflito e de lotação depende das gravações
+  // anteriores, então não dá para disparar em paralelo.
+  for (const id of input.atividadesIds) {
+    try {
+      await inscreverAtividade(token, Number(id));
+      atividades.inscritas.push(id);
+    } catch (e) {
+      atividades.falhas.push({
+        id,
+        erro:
+          e instanceof ErroApi
+            ? e.message
+            : "Não foi possível inscrever nesta atividade.",
+      });
+    }
+  }
+
+  return { ok: true, inscricao: resultado.inscricao, atividades };
 }

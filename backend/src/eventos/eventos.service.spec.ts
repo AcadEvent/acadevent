@@ -30,6 +30,15 @@ describe('EventosService', () => {
       findFirst: jest.fn(),
       create: jest.fn(),
     },
+    inscricaoEdicao: {
+      findMany: jest.fn(),
+    },
+    certificado: {
+      count: jest.fn(),
+    },
+    atividadeMinistrante: {
+      count: jest.fn(),
+    },
     $transaction: jest.fn((callback) => callback(mockPrismaService)),
   };
 
@@ -55,6 +64,144 @@ describe('EventosService', () => {
       const resultado = await service.listarPublicos();
       expect(resultado).toHaveLength(1);
       expect(mockPrismaService.edicao.findMany).toHaveBeenCalled();
+    });
+  });
+
+  describe('listarPorParticipante', () => {
+    it('deve filtrar edicoes pelas inscricoes ativas do usuario e anexar o slug', async () => {
+      mockPrismaService.edicao.findMany.mockResolvedValue([
+        {
+          id_edicao: 7,
+          titulo_oficial: 'Semana Dev',
+          sigla: 'sdev',
+          slug: null,
+        },
+      ]);
+
+      const resultado = await service.listarPorParticipante(42);
+
+      expect(resultado).toEqual([
+        {
+          id_edicao: 7,
+          titulo_oficial: 'Semana Dev',
+          sigla: 'sdev',
+          slug: 'sdev',
+        },
+      ]);
+      expect(mockPrismaService.edicao.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            lotes: {
+              some: {
+                inscricoes: {
+                  some: {
+                    participante: { id_usuario: 42 },
+                    status: { notIn: ['Cancelada', 'Estornada'] },
+                  },
+                },
+              },
+            },
+          },
+        }),
+      );
+    });
+
+    it('deve retornar lista vazia quando o usuario nao tem inscricoes', async () => {
+      mockPrismaService.edicao.findMany.mockResolvedValue([]);
+
+      await expect(service.listarPorParticipante(42)).resolves.toEqual([]);
+    });
+  });
+
+  describe('buscarPainelParticipante', () => {
+    const edicao = {
+      id_edicao: 7,
+      slug: 'senf',
+      sigla: 'SENF',
+      titulo_oficial: 'V Semana de Enfermagem',
+      numero_edicao: '2026',
+      descricao_geral: null,
+      endereco: 'Campus Dourados',
+      data_abertura_evento: new Date('2026-12-01T08:00:00Z'),
+      data_encerramento_evento: new Date('2026-12-05T18:00:00Z'),
+    };
+
+    it('deve montar o painel com situacao, grade, recibos e certificados', async () => {
+      mockPrismaService.edicao.findFirst.mockResolvedValue(edicao);
+      mockPrismaService.inscricaoEdicao.findMany.mockResolvedValue([
+        {
+          status: 'Pendente',
+          pagamentos: [{ url_recibo: null }],
+          inscricoesAtividades: [],
+        },
+        {
+          status: 'Confirmada',
+          pagamentos: [{ url_recibo: 'REC-1' }],
+          inscricoesAtividades: [
+            {
+              atividade: {
+                id_atividade: 3,
+                titulo: 'Oficina',
+                data_abertura_atividade: new Date('2026-12-02T14:00:00Z'),
+                data_encerramento_atividade: new Date('2026-12-02T16:00:00Z'),
+                reservas: [{ espaco: { nome_sala: 'Sala 1' } }],
+              },
+            },
+            {
+              atividade: {
+                id_atividade: 2,
+                titulo: 'Abertura',
+                data_abertura_atividade: new Date('2026-12-02T09:00:00Z'),
+                data_encerramento_atividade: null,
+                reservas: [],
+              },
+            },
+          ],
+        },
+      ]);
+      mockPrismaService.certificado.count.mockResolvedValue(1);
+      mockPrismaService.atividadeMinistrante.count.mockResolvedValue(0);
+
+      const painel = await service.buscarPainelParticipante(42, 'senf');
+
+      expect(painel).toMatchObject({
+        slug: 'senf',
+        nome: 'V Semana de Enfermagem',
+        statusInscricao: 'confirmada',
+        papeis: ['participante'],
+        atividadesInscritas: 2,
+        recibosDisponiveis: 1,
+        certificadosDisponiveis: 1,
+        submissoesEnviadas: 0,
+      });
+      expect(painel.atividades.map((a) => a.titulo)).toEqual([
+        'Abertura',
+        'Oficina',
+      ]);
+      expect(painel.atividades[1].local).toBe('Sala 1');
+      expect(painel.atividades[0].fim).toBe('2026-12-05T18:00:00.000Z');
+    });
+
+    it('deve incluir o papel de ministrante quando ha atividades ministradas', async () => {
+      mockPrismaService.edicao.findFirst.mockResolvedValue(edicao);
+      mockPrismaService.inscricaoEdicao.findMany.mockResolvedValue([
+        { status: 'Confirmada', pagamentos: [], inscricoesAtividades: [] },
+      ]);
+      mockPrismaService.certificado.count.mockResolvedValue(0);
+      mockPrismaService.atividadeMinistrante.count.mockResolvedValue(2);
+
+      const painel = await service.buscarPainelParticipante(42, 'senf');
+
+      expect(painel.papeis).toEqual(['participante', 'ministrante']);
+    });
+
+    it('deve lancar NotFoundException quando o usuario nao participa do evento', async () => {
+      mockPrismaService.edicao.findFirst.mockResolvedValue(edicao);
+      mockPrismaService.inscricaoEdicao.findMany.mockResolvedValue([]);
+
+      await expect(
+        service.buscarPainelParticipante(42, 'senf'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 

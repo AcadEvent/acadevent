@@ -62,6 +62,29 @@ export interface NovaInscricao {
   participante?: string;
 }
 
+/**
+ * Resultado da gravação das atividades escolhidas no wizard (RF05.3, RF05.4).
+ * O backend só aceita inscrição em atividade com a inscrição no evento
+ * confirmada; com pagamento pendente a escolha fica em `pendentes`.
+ */
+export interface ResultadoAtividadesInscricao {
+  /** Ids das atividades em que a inscrição foi gravada. */
+  inscritas: string[];
+  /** Atividades recusadas pelo backend (conflito de horário, lotação...). */
+  falhas: { id: string; erro: string }[];
+  /** Escolhidas, mas dependem da confirmação do pagamento para serem gravadas. */
+  pendentes: string[];
+}
+
+/** Retorno do passo de pagamento: a inscrição no evento e nas atividades. */
+export type ResultadoFinalizacao =
+  | {
+      ok: true;
+      inscricao: InscricaoEdicao;
+      atividades: ResultadoAtividadesInscricao;
+    }
+  | { ok: false; erro: string };
+
 /** Lote de ingressos de uma edição (RF04.2). */
 export interface LoteIngresso {
   id: string;

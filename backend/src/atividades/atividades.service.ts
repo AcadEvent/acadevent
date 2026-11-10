@@ -15,6 +15,22 @@ import {
 import { CriarAtividadeDto } from './dto/criar-atividade.dto';
 import { AssociarMinistranteDto } from './dto/associar-ministrante.dto';
 
+/**
+ * Periodo em que a atividade acontece: o horario da reserva de espaco quando
+ * existe, senao as datas da propria atividade. `null` quando nao ha horario
+ * definido (nesse caso nao ha como detectar conflito).
+ */
+function periodoDaAtividade(atividade: {
+  data_abertura_atividade: Date | null;
+  data_encerramento_atividade: Date | null;
+  reservas: { data_inicio: Date | null; data_final: Date | null }[];
+}): { inicio: Date; fim: Date } | null {
+  const reserva = atividade.reservas.find((r) => r.data_inicio && r.data_final);
+  const inicio = reserva?.data_inicio ?? atividade.data_abertura_atividade;
+  const fim = reserva?.data_final ?? atividade.data_encerramento_atividade;
+  return inicio && fim ? { inicio, fim } : null;
+}
+
 @Injectable()
 export class AtividadesService {
   constructor(private readonly prisma: PrismaService) {}
@@ -120,26 +136,36 @@ export class AtividadesService {
       );
     }
 
+    // Usa a inscricao CONFIRMADA no evento: o participante pode ter outras
+    // pendentes (reenvios do checkout) e a primeira nao deve barrar a atividade.
     const inscricaoEdicao = await this.prisma.inscricaoEdicao.findFirst({
       where: {
         id_participante: perfilParticipante.id_participante,
+        status: 'Confirmada',
         lote: {
           id_edicao: atividade.id_edicao,
         },
       },
+      orderBy: { id_inscricao_edicao: 'asc' },
     });
 
-    if (!inscricaoEdicao || inscricaoEdicao.status !== 'Confirmada') {
+    if (!inscricaoEdicao) {
       throw new ForbiddenException(
         'Precondicao financeira nao atendida: inscricao no evento nao confirmada.',
       );
     }
 
+    const doParticipanteNoEvento = {
+      id_participante: perfilParticipante.id_participante,
+      lote: { id_edicao: atividade.id_edicao },
+    };
+
     const inscricaoAtividadeExistente =
       await this.prisma.inscricaoAtividade.findFirst({
         where: {
-          id_inscricao_edicao: inscricaoEdicao.id_inscricao_edicao,
           id_atividade: dto.id_atividade,
+          status: { not: 'Cancelada' },
+          inscricaoEdicao: doParticipanteNoEvento,
         },
       });
 
@@ -149,12 +175,15 @@ export class AtividadesService {
       );
     }
 
+    // Conflito de horario na grade do participante (RF05.4): vale com ou sem
+    // sala reservada, usando o periodo real de cada atividade.
     const reservaAtual = atividade.reservas[0];
-    if (reservaAtual && reservaAtual.data_inicio && reservaAtual.data_final) {
+    const periodoAtual = periodoDaAtividade(atividade);
+    if (periodoAtual) {
       const outrasInscricoes = await this.prisma.inscricaoAtividade.findMany({
         where: {
-          id_inscricao_edicao: inscricaoEdicao.id_inscricao_edicao,
           status: { not: 'Cancelada' },
+          inscricaoEdicao: doParticipanteNoEvento,
         },
         include: {
           atividade: {
@@ -166,20 +195,15 @@ export class AtividadesService {
       });
 
       for (const item of outrasInscricoes) {
-        if (item.status === 'Cancelada') {
-          continue;
-        }
-        for (const res of item.atividade.reservas) {
-          if (res.data_inicio && res.data_final) {
-            if (
-              reservaAtual.data_inicio < res.data_final &&
-              reservaAtual.data_final > res.data_inicio
-            ) {
-              throw new ConflictException(
-                `Conflito de horario na grade do participante com a atividade "${item.atividade.titulo}".`,
-              );
-            }
-          }
+        const periodo = periodoDaAtividade(item.atividade);
+        if (
+          periodo &&
+          periodoAtual.inicio < periodo.fim &&
+          periodoAtual.fim > periodo.inicio
+        ) {
+          throw new ConflictException(
+            `Conflito de horario na grade do participante com a atividade "${item.atividade.titulo}".`,
+          );
         }
       }
     }

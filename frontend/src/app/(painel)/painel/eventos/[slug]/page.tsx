@@ -3,7 +3,7 @@
  * OWNER: Kauan   RF: RF03.1.1, RF02.2   PRIORIDADE: MVP
  * PROPÓSITO: Painel pessoal do evento (visão geral das minhas ações e atalhos).
  * COMPONENTES: Breadcrumbs, PageHeader, Chip, Grid, Card, List, EmptyState
- * DADOS: getPainelEvento(slug) (via src/lib/api, nunca fetch direto)
+ * DADOS: getPainelEvento(slug, token) (via src/lib/api — GET /eventos/participante/meus/:slug)
  * ESTADOS: vazio (EmptyState) / erro (Alert). Loading coberto por loading.tsx.
  * DONE: responsivo, tokens do tema, estados cobertos, placeholder substituído.
  *
@@ -45,6 +45,7 @@ import WorkspacePremiumIcon from "@mui/icons-material/WorkspacePremium";
 import PageHeader from "@/components/layout/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
 import { getPainelEvento } from "@/lib/api";
+import { getToken } from "@/lib/auth/session";
 import type {
   AtividadeInscrita,
   PainelEvento,
@@ -126,8 +127,8 @@ interface Atalho {
 function montarAtalhos(evento: PainelEvento): Atalho[] {
   return [
     {
-      segmento: "grade",
-      titulo: "Grade de atividades",
+      segmento: "atividades",
+      titulo: "Atividades",
       descricao: pluralizar(
         evento.atividades.length,
         "atividade inscrita",
@@ -211,7 +212,8 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   try {
-    const evento = await getPainelEvento(slug);
+    const token = await getToken();
+    const evento = token ? await getPainelEvento(slug, token) : null;
     if (!evento) return { title: "Evento não encontrado" };
     return {
       title: evento.sigla
@@ -232,7 +234,8 @@ export default async function Page({
 
   let evento: PainelEvento | null;
   try {
-    evento = await getPainelEvento(slug);
+    const token = await getToken();
+    evento = token ? await getPainelEvento(slug, token) : null;
   } catch {
     return (
       <Box sx={{ maxWidth: 1200, mx: "auto" }}>

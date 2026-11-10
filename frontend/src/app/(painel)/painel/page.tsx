@@ -3,7 +3,7 @@
  * OWNER: Kauan   RF: RF03.1.1, RF03.1.5   PRIORIDADE: MVP
  * PROPÓSITO: Hub pessoal multi-evento: meus eventos, atalhos e notificações.
  * COMPONENTES: PageHeader, Grid, EventCard, List
- * DADOS: getMeusEventos() (via src/lib/api — nunca fetch direto)
+ * DADOS: getMeusEventos(token) (via src/lib/api — GET /eventos/participante/meus)
  * ESTADOS: loading (Skeleton) / vazio (EmptyState) / erro (Alert)
  * DONE: responsivo, usa tokens do tema (sem cor hardcoded), estados cobertos,
  *   placeholder substituído. Loading em loading.tsx; erro no boundary raiz.
@@ -31,6 +31,7 @@ import Typography from "@mui/material/Typography";
 import PageHeader from "@/components/layout/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
 import { getMeusEventos } from "@/lib/api";
+import { getToken } from "@/lib/auth/session";
 import type { Evento, StatusEvento } from "@/lib/types";
 
 export const metadata: Metadata = {
@@ -145,7 +146,8 @@ function MeuEventoCard({ evento }: { evento: Evento }) {
 }
 
 export default async function PainelPage() {
-  const eventos = await getMeusEventos();
+  const token = await getToken();
+  const eventos = token ? await getMeusEventos(token) : [];
 
   return (
     <Box sx={{ maxWidth: 1200, mx: "auto" }}>
