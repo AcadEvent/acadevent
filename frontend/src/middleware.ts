@@ -9,14 +9,10 @@ import { AUTH_ENABLED, COOKIE_SESSAO } from "@/lib/auth/config";
  * Next.js registra de fato como middleware (confirmado pelo middleware-manifest).
  * O antigo `src/proxy.ts` NÃO era invocado — o guard ficava morto (issue #41).
  *
- * As áreas /painel, /gerenciar e /admin exigem autenticação. A verificação real
- * depende do contrato de auth (#74) com o backend, que ainda não existe — por isso
- * o guard está DESLIGADO por padrão (`AUTH_ENABLED`), permitindo que o time
- * visualize os stubs durante o desenvolvimento. Agora que o arquivo é invocado,
- * basta ligar AUTH_ENABLED quando a sessão real existir.
- *
- * TODO(auth): ao integrar a sessão (src/lib/auth/session.ts), ligar AUTH_ENABLED
- * e checar o token/perfil (redirecionar para /login quando ausente/insuficiente).
+ * As áreas /painel, /gerenciar e /admin exigem autenticação. O guard vem LIGADO
+ * por padrão (`AUTH_ENABLED`, desligável só com AUTH_ENABLED=false). Aqui é o gate
+ * barato (cookie presente?); a validação do token e o RBAC por perfil acontecem
+ * nos layouts (getSession → /auth/me) e no backend (JwtAuthGuard/RolesGuard).
  */
 
 const PROTECTED_PREFIXES = ["/painel", "/gerenciar", "/admin"];
@@ -35,7 +31,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // TODO(auth): validar sessão real. Sem sessão → redireciona ao login.
+  // Sem cookie de sessão → redireciona ao login.
   const hasSession = request.cookies.has(COOKIE_SESSAO);
   if (!hasSession) {
     const loginUrl = new URL("/login", request.url);

@@ -4,9 +4,9 @@
  * Sem mock/`fake()`. Ver docs/arquitetura-frontend.md §4.
  *
  * NOTA (limitação do backend): o storage é genérico — não há endpoint para
- * LISTAR materiais por atividade nem vínculo material↔atividade, e o download
- * (/storage/arquivos) não é protegido. A UI cobre upload + link; a lista e o
- * controle de acesso por inscrição dependem de evolução do backend.
+ * LISTAR materiais por atividade nem vínculo material↔atividade. O download
+ * (/storage/arquivos) exige login e é servido pelo proxy /api/arquivos; o
+ * controle de acesso por inscrição depende de evolução do backend.
  */
 import type { ArquivoSalvo } from "@/lib/types";
 
@@ -30,13 +30,16 @@ function toArquivo(a: ArquivoSalvoApi): ArquivoSalvo {
   };
 }
 
-/** URL absoluta para baixar um arquivo já armazenado. */
+/**
+ * URL (relativa ao frontend) para baixar um arquivo já armazenado. Passa pelo
+ * proxy /api/arquivos, que anexa o JWT da sessão (o backend exige autenticação).
+ */
 export function urlArquivo(caminhoRelativoOuUrl: string): string {
   if (caminhoRelativoOuUrl.startsWith("http")) return caminhoRelativoOuUrl;
-  if (caminhoRelativoOuUrl.startsWith("/storage/")) {
-    return `${API_URL}${caminhoRelativoOuUrl}`;
-  }
-  return `${API_URL}/storage/arquivos/${caminhoRelativoOuUrl}`;
+  const caminho = caminhoRelativoOuUrl
+    .replace(/^\/?storage\/arquivos\//, "")
+    .replace(/^\//, "");
+  return `/api/arquivos/${caminho}`;
 }
 
 /**
