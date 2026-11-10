@@ -26,6 +26,8 @@ import * as fs from 'fs';
 import type { ArquivoUpload } from './storage.interface';
 import { STORAGE_SERVICE, StorageServiceBase } from './storage.interface';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 
 const EXTENSOES_PERMITIDAS = new Set([
   '.pdf',
@@ -54,6 +56,35 @@ const MIMETYPES_PERMITIDOS = new Set([
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 ]);
 
+const ASSINATURAS_POR_EXTENSAO: Record<string, number[][]> = {
+  '.pdf': [[0x25, 0x50, 0x44, 0x46, 0x2d]],
+  '.png': [[0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]],
+  '.jpg': [[0xff, 0xd8, 0xff]],
+  '.jpeg': [[0xff, 0xd8, 0xff]],
+  '.webp': [[0x52, 0x49, 0x46, 0x46]],
+  '.doc': [[0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]],
+  '.ppt': [[0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]],
+  '.xls': [[0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]],
+  '.docx': [[0x50, 0x4b, 0x03, 0x04]],
+  '.pptx': [[0x50, 0x4b, 0x03, 0x04]],
+  '.xlsx': [[0x50, 0x4b, 0x03, 0x04]],
+};
+
+function conteudoCompativel(file: ArquivoUpload, ext: string): boolean {
+  const assinaturas = ASSINATURAS_POR_EXTENSAO[ext];
+  const buffer = file.buffer;
+  if (!assinaturas || !Buffer.isBuffer(buffer)) return false;
+  const confere = assinaturas.some(
+    (sig) =>
+      buffer.length >= sig.length && sig.every((byte, i) => buffer[i] === byte),
+  );
+  if (!confere) return false;
+  if (ext === '.webp') {
+    return buffer.length >= 12 && buffer.toString('ascii', 8, 12) === 'WEBP';
+  }
+  return true;
+}
+
 function validarArquivo(file: ArquivoUpload) {
   if (!file) {
     throw new BadRequestException('Nenhum arquivo foi enviado.');
@@ -64,6 +95,12 @@ function validarArquivo(file: ArquivoUpload) {
 
   if (!EXTENSOES_PERMITIDAS.has(ext) || !MIMETYPES_PERMITIDOS.has(mime)) {
     throw new BadRequestException('Tipo de arquivo nao permitido.');
+  }
+
+  if (!conteudoCompativel(file, ext)) {
+    throw new BadRequestException(
+      'Conteudo do arquivo nao corresponde a extensao informada.',
+    );
   }
 }
 
@@ -91,7 +128,8 @@ export class StorageController {
       },
     },
   })
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('organizador', 'ministrante', 'administrador')
   @Post('upload')
   @UseInterceptors(
     FileInterceptor('file', {
@@ -114,7 +152,9 @@ export class StorageController {
     return this.storageService.salvarArquivo(file);
   }
 
-  @ApiOperation({ summary: 'Recuperar arquivo armazenado' })
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Recuperar arquivo armazenado (requer login)' })
+  @UseGuards(JwtAuthGuard)
   @Get('arquivos/:subpasta/:nome')
   obterArquivo(
     @Param('subpasta') subpasta: string,

@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { Prisma, PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
+import * as bcrypt from 'bcryptjs';
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
@@ -12,6 +13,11 @@ const pool = new Pool({ connectionString: databaseUrl });
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
 const ts = (value: string) => new Date(value);
+
+// Senha das contas do seed (apenas desenvolvimento). Sobrescreva com SEED_PASSWORD.
+const SENHA_SEED = process.env.SEED_PASSWORD ?? 'Teste@123';
+const SENHA_PLACEHOLDER_LEGADA = 'hash123';
+const SENHA_HASH = bcrypt.hashSync(SENHA_SEED, 10);
 
 const SEQUENCE_COLUMNS: Array<[string, string]> = [
   ['usuario', 'id_usuario'],
@@ -78,7 +84,7 @@ async function main() {
       id_usuario: 1,
       nome: 'Bradley Hayes',
       email: 'admin@uems.br',
-      senha_hash: 'hash123',
+      senha_hash: SENHA_HASH,
       url_foto: 'img/adm.png',
     },
   });
@@ -89,7 +95,7 @@ async function main() {
       id_usuario: 2,
       nome: 'Mitchell Carver',
       email: 'coord.comp@uems.br',
-      senha_hash: 'hash123',
+      senha_hash: SENHA_HASH,
       url_foto: 'img/coord_comp.png',
     },
   });
@@ -100,7 +106,7 @@ async function main() {
       id_usuario: 3,
       nome: 'Eleanor Vance',
       email: 'coord.enf@uems.br',
-      senha_hash: 'hash123',
+      senha_hash: SENHA_HASH,
       url_foto: 'img/coord_enf.png',
     },
   });
@@ -111,7 +117,7 @@ async function main() {
       id_usuario: 4,
       nome: 'Trevor Jenkins',
       email: 'prof.cpp@uems.br',
-      senha_hash: 'hash123',
+      senha_hash: SENHA_HASH,
       url_foto: 'img/min_comp.png',
     },
   });
@@ -122,7 +128,7 @@ async function main() {
       id_usuario: 5,
       nome: 'Sarah Linwood',
       email: 'prof.saude@uems.br',
-      senha_hash: 'hash123',
+      senha_hash: SENHA_HASH,
       url_foto: 'img/min_enf.png',
     },
   });
@@ -133,7 +139,7 @@ async function main() {
       id_usuario: 6,
       nome: 'Caleb Foster',
       email: 'kaio.aluno@acad.br',
-      senha_hash: 'hash123',
+      senha_hash: SENHA_HASH,
       url_foto: 'img/aluno1.png',
     },
   });
@@ -144,7 +150,7 @@ async function main() {
       id_usuario: 7,
       nome: 'Madison Cole',
       email: 'maria.aluno@acad.br',
-      senha_hash: 'hash123',
+      senha_hash: SENHA_HASH,
       url_foto: 'img/aluno2.png',
     },
   });
@@ -155,7 +161,7 @@ async function main() {
       id_usuario: 8,
       nome: 'Julian Bates',
       email: 'parecerista@uems.br',
-      senha_hash: 'hash123',
+      senha_hash: SENHA_HASH,
       url_foto: 'img/par.png',
     },
   });
@@ -738,6 +744,13 @@ async function main() {
       razao_social: 'Hospital Regional',
       nivel: 1,
     },
+  });
+
+  // Bancos já semeados antes tinham o placeholder inválido ('hash123'), que não
+  // permite login. Troca só esses; senhas reais de usuários nunca são tocadas.
+  await prisma.usuario.updateMany({
+    where: { senha_hash: SENHA_PLACEHOLDER_LEGADA },
+    data: { senha_hash: SENHA_HASH },
   });
 
   await resetSequences();
