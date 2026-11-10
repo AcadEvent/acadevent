@@ -65,7 +65,7 @@ export default function InscricoesGestao({
     setConfirmando(true);
     setErro(null);
     try {
-      await confirmarPagamentoAction(alvo.id);
+      await confirmarPagamentoAction(alvo.id, alvo.eventoSlug);
       setAlvo(null);
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Não foi possível confirmar.");
@@ -91,7 +91,7 @@ export default function InscricoesGestao({
               <TableCell>Lote</TableCell>
               <TableCell align="right">Valor</TableCell>
               <TableCell>Status</TableCell>
-              <TableCell>Data</TableCell>
+              <TableCell>Pago em</TableCell>
               <TableCell align="right">Ações</TableCell>
             </TableRow>
           </TableHead>
@@ -99,7 +99,21 @@ export default function InscricoesGestao({
             {inscricoes.map((i) => (
               <TableRow key={i.id} hover>
                 <TableCell>{i.codigo ?? i.id}</TableCell>
-                <TableCell>{i.participante}</TableCell>
+                <TableCell>
+                  {i.participante}
+                  {i.participanteEmail && (
+                    <Box
+                      component="span"
+                      sx={{
+                        display: "block",
+                        color: "text.secondary",
+                        typography: "caption",
+                      }}
+                    >
+                      {i.participanteEmail}
+                    </Box>
+                  )}
+                </TableCell>
                 <TableCell>{i.loteNome ?? "—"}</TableCell>
                 <TableCell align="right">{moeda.format(i.valor)}</TableCell>
                 <TableCell>
@@ -109,7 +123,9 @@ export default function InscricoesGestao({
                     color={STATUS_COLOR[i.statusPagamento]}
                   />
                 </TableCell>
-                <TableCell>{dataFmt.format(new Date(i.criadaEm))}</TableCell>
+                <TableCell>
+                  {i.pagaEm ? dataFmt.format(new Date(i.pagaEm)) : "—"}
+                </TableCell>
                 <TableCell align="right">
                   {i.statusPagamento === "pendente" ? (
                     <Button

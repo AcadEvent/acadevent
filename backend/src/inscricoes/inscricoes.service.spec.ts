@@ -1,5 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Prisma } from '@prisma/client';
 import { InscricoesService } from './inscricoes.service';
@@ -15,8 +20,12 @@ interface MockPrismaService {
   cupom: {
     findUnique: jest.Mock;
   };
+  edicao: {
+    findUnique: jest.Mock;
+  };
   inscricaoEdicao: {
     findFirst: jest.Mock;
+    findMany: jest.Mock;
     update: jest.Mock;
   };
   pagamento: {
@@ -25,6 +34,8 @@ interface MockPrismaService {
     update: jest.Mock;
   };
   $queryRaw: jest.Mock;
+  $executeRaw: jest.Mock;
+  txInscricaoEdicaoFindFirst: jest.Mock;
   $transaction: jest.Mock;
 }
 
@@ -43,8 +54,12 @@ describe('InscricoesService', () => {
       cupom: {
         findUnique: jest.fn(),
       },
+      edicao: {
+        findUnique: jest.fn(),
+      },
       inscricaoEdicao: {
         findFirst: jest.fn(),
+        findMany: jest.fn(),
         update: jest.fn(),
       },
       pagamento: {
@@ -53,6 +68,9 @@ describe('InscricoesService', () => {
         update: jest.fn(),
       },
       $queryRaw: jest.fn().mockResolvedValue([{ id_inscricao_edicao: 1 }]),
+      $executeRaw: jest.fn().mockResolvedValue(0),
+      // inscricaoEdicao.findFirst dentro da transacao (checagem de duplicidade)
+      txInscricaoEdicaoFindFirst: jest.fn().mockResolvedValue(null),
       $transaction: jest.fn(),
     };
 
@@ -60,7 +78,9 @@ describe('InscricoesService', () => {
       (callback: (tx: Prisma.TransactionClient) => Promise<unknown>) => {
         const tx = {
           $queryRaw: prisma.$queryRaw,
+          $executeRaw: prisma.$executeRaw,
           inscricaoEdicao: {
+            findFirst: prisma.txInscricaoEdicaoFindFirst,
             update: jest.fn().mockImplementation((args: any) =>
               Promise.resolve({
                 id_inscricao_edicao: args?.where?.id_inscricao_edicao || 1,
@@ -158,6 +178,65 @@ describe('InscricoesService', () => {
       expect(result).toBeDefined();
       expect(prisma.$transaction).toHaveBeenCalled();
       expect(prisma.$queryRaw).toHaveBeenCalled();
+    });
+
+    describe('inscricao duplicada no mesmo evento', () => {
+      const lote = {
+        id_lote: 1,
+        id_edicao: 7,
+        data_abertura_lote: new Date(Date.now() - 10000),
+        data_encerramento_lote: new Date(Date.now() + 10000),
+        numero_max_ingressos: 10,
+        preco: new Prisma.Decimal(100),
+      };
+
+      beforeEach(() => {
+        prisma.loteIngresso.findUnique.mockResolvedValue(lote);
+        prisma.perfilParticipante.findUnique.mockResolvedValue({
+          id_participante: 1,
+        });
+      });
+
+      it('deve lançar ConflictException quando o participante já está inscrito', async () => {
+        prisma.txInscricaoEdicaoFindFirst.mockResolvedValue({
+          id_inscricao_edicao: 50,
+          status: 'Confirmada',
+        });
+
+        await expect(service.criarInscricao(1, { id_lote: 1 })).rejects.toThrow(
+          'ja esta inscrito',
+        );
+        await expect(service.criarInscricao(1, { id_lote: 1 })).rejects.toThrow(
+          ConflictException,
+        );
+        // nada e gravado nem consome vaga do lote
+        expect(prisma.$queryRaw).not.toHaveBeenCalled();
+      });
+
+      it('deve orientar a concluir o pagamento quando já há inscrição pendente', async () => {
+        prisma.txInscricaoEdicaoFindFirst.mockResolvedValue({
+          id_inscricao_edicao: 51,
+          status: 'Pendente',
+        });
+
+        await expect(service.criarInscricao(1, { id_lote: 1 })).rejects.toThrow(
+          'inscricao pendente',
+        );
+      });
+
+      it('deve ignorar inscrições canceladas/estornadas e travar por participante e evento', async () => {
+        const resultado = await service.criarInscricao(1, { id_lote: 1 });
+
+        expect(resultado).toBeDefined();
+        expect(prisma.$executeRaw).toHaveBeenCalledTimes(1);
+        expect(prisma.txInscricaoEdicaoFindFirst).toHaveBeenCalledWith({
+          where: {
+            id_participante: 1,
+            status: { notIn: ['Cancelada', 'Estornada'] },
+            lote: { id_edicao: 7 },
+          },
+        });
+      });
     });
 
     it('deve lançar BadRequestException se cupom for de outra edicao', async () => {
@@ -306,6 +385,96 @@ describe('InscricoesService', () => {
       await service.processarWebhook({ gateway_id: '123', status: 'Recusado' });
       expect(prisma.pagamento.update).toHaveBeenCalled();
       expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('listarInscricoesPorEdicao', () => {
+    const edicao = {
+      id_edicao: 5,
+      evento: { organizador: { id_usuario: 10 } },
+    };
+
+    const inscricaoDoBanco = {
+      id_inscricao_edicao: 9,
+      status: 'Pendente',
+      participante: { usuario: { nome: 'Ana Souza', email: 'ana@teste.com' } },
+      lote: {
+        id_lote: 3,
+        nome_lote: 'Lote Unico',
+        preco: new Prisma.Decimal('50'),
+      },
+      cupom: { codigo: 'KAIO10', percentual_desconto: 10 },
+      pagamentos: [
+        {
+          status: 'Pendente',
+          valor: new Prisma.Decimal('45'),
+          metodo_pagamento: 'pix',
+          data_pagamento: null,
+        },
+      ],
+      _count: { inscricoesAtividades: 2 },
+    };
+
+    it('deve lancar NotFoundException se a edicao nao existir', async () => {
+      prisma.edicao.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.listarInscricoesPorEdicao(5, { id_usuario: 10 }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('deve lancar ForbiddenException para organizador de outro evento', async () => {
+      prisma.edicao.findUnique.mockResolvedValue(edicao);
+
+      await expect(
+        service.listarInscricoesPorEdicao(5, {
+          id_usuario: 99,
+          perfis: ['organizador'],
+        }),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.inscricaoEdicao.findMany).not.toHaveBeenCalled();
+    });
+
+    it('deve listar as inscricoes para o organizador do evento', async () => {
+      prisma.edicao.findUnique.mockResolvedValue(edicao);
+      prisma.inscricaoEdicao.findMany.mockResolvedValue([inscricaoDoBanco]);
+
+      const resultado = await service.listarInscricoesPorEdicao(5, {
+        id_usuario: 10,
+        perfis: ['organizador'],
+      });
+
+      expect(resultado).toEqual([
+        {
+          id_inscricao_edicao: 9,
+          status: 'Pendente',
+          participante: { nome: 'Ana Souza', email: 'ana@teste.com' },
+          lote: { id_lote: 3, nome_lote: 'Lote Unico', preco: 50 },
+          cupom: { codigo: 'KAIO10', percentual_desconto: 10 },
+          pagamento: {
+            status: 'Pendente',
+            valor: 45,
+            metodo_pagamento: 'pix',
+            data_pagamento: null,
+          },
+          atividades_inscritas: 2,
+        },
+      ]);
+      expect(prisma.inscricaoEdicao.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { lote: { id_edicao: 5 } } }),
+      );
+    });
+
+    it('deve permitir que um administrador veja inscricoes de qualquer evento', async () => {
+      prisma.edicao.findUnique.mockResolvedValue(edicao);
+      prisma.inscricaoEdicao.findMany.mockResolvedValue([]);
+
+      await expect(
+        service.listarInscricoesPorEdicao(5, {
+          id_usuario: 1,
+          perfis: ['Administrador'],
+        }),
+      ).resolves.toEqual([]);
     });
   });
 });

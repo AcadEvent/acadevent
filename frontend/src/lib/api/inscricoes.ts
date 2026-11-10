@@ -219,31 +219,81 @@ export function getInscricao(id: string): Promise<InscricaoEdicao | null> {
 
 // ── Gestão (organizador) ──────────────────────────────────────────────────────
 
-/** Inscrições de um evento, mais recentes primeiro (RF04.1). */
-export function getInscricoesDoEvento(
+interface InscricaoGestaoApi {
+  id_inscricao_edicao: number;
+  status?: string | null;
+  participante: { nome: string; email: string };
+  lote: { id_lote: number; nome_lote: string; preco: number };
+  cupom: { codigo: string; percentual_desconto: number } | null;
+  pagamento: {
+    status?: string | null;
+    valor: number;
+    metodo_pagamento?: string | null;
+    data_pagamento?: string | null;
+  } | null;
+  atividades_inscritas: number;
+}
+
+/** Status da InscricaoEdicao no banco → status de pagamento da interface. */
+const STATUS_INSCRICAO: Record<string, StatusPagamento> = {
+  confirmada: "confirmado",
+  pendente: "pendente",
+  cancelada: "cancelado",
+  estornada: "estornado",
+};
+
+/**
+ * Inscrições de uma edição, mais recentes primeiro (GET
+ * /inscricoes/edicao/:id, RF04.1). Só o organizador do evento ou um
+ * administrador lê (a resposta traz nome e e-mail dos participantes). O schema
+ * não guarda a data de criação da inscrição: `criadaEm` fica vazio e `pagaEm`
+ * traz a data do pagamento quando há.
+ */
+export async function getInscricoesDoEvento(
+  token: string,
+  idEdicao: number,
   eventoSlug: string,
 ): Promise<InscricaoEdicao[]> {
-  return fake(
-    mockInscricoes
-      .filter((i) => i.eventoSlug === eventoSlug)
-      .sort((a, b) => b.criadaEm.localeCompare(a.criadaEm)),
+  const dados = await requestAutenticado<InscricaoGestaoApi[]>(
+    `/inscricoes/edicao/${idEdicao}`,
+    token,
   );
+
+  return dados.map((i) => {
+    const statusPagamento =
+      STATUS_INSCRICAO[(i.status ?? "").toLowerCase()] ?? "pendente";
+    return {
+      id: String(i.id_inscricao_edicao),
+      eventoSlug,
+      participante: i.participante.nome,
+      participanteEmail: i.participante.email,
+      statusPagamento,
+      valor: i.pagamento?.valor ?? i.lote.preco,
+      criadaEm: "",
+      loteId: String(i.lote.id_lote),
+      loteNome: i.lote.nome_lote,
+      valorBruto: i.lote.preco,
+      pagaEm:
+        statusPagamento === "confirmado"
+          ? (i.pagamento?.data_pagamento ?? undefined)
+          : undefined,
+    };
+  });
 }
 
 /**
- * Confirmação manual de pagamento pelo organizador (RF04.5). Só faz efeito sobre
- * inscrições pendentes; devolve a inscrição atualizada.
+ * Confirmação manual de pagamento pelo organizador (POST
+ * /pagamentos/confirmar-manual, RF04.5). A inscrição passa a Confirmada e o
+ * backend gera o QR e o recibo. Lança ErroRequisicao com a mensagem do backend.
  */
-export function confirmarPagamento(id: string): Promise<InscricaoEdicao> {
-  const inscricao = mockInscricoes.find((i) => i.id === id);
-  if (!inscricao) {
-    throw new Error("Inscrição não encontrada.");
-  }
-  if (inscricao.statusPagamento === "pendente") {
-    inscricao.statusPagamento = "confirmado";
-    inscricao.pagaEm = new Date().toISOString();
-  }
-  return fake(inscricao);
+export async function confirmarPagamento(
+  token: string,
+  idInscricao: string,
+): Promise<void> {
+  await requestAutenticado("/pagamentos/confirmar-manual", token, {
+    method: "POST",
+    body: JSON.stringify({ id_inscricao_edicao: Number(idInscricao) }),
+  });
 }
 
 /** Check-ins já realizados (por id de inscrição). Vive só na memória do servidor. */

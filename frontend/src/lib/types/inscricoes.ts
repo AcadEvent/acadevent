@@ -15,9 +15,11 @@ export interface InscricaoEdicao {
   id: string;
   eventoSlug: string;
   participante: string;
+  /** E-mail do participante — só na visão do organizador (gestão). */
+  participanteEmail?: string;
   statusPagamento: StatusPagamento;
   valor: number; // valor final, já com desconto
-  criadaEm: string; // ISO
+  criadaEm: string; // ISO — vazio quando o backend não registra a criação
   /** Código legível mostrado no recibo (ex.: "SITC26-0042"). */
   codigo?: string;
   loteId?: string;
