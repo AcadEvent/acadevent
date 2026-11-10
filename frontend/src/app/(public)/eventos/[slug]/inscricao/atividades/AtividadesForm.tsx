@@ -154,8 +154,9 @@ export default function AtividadesForm({
   }
 
   function avancar() {
-    // TODO(api): persistir a seleção (inscreverEmAtividades) quando a API NestJS
-    // existir; por ora a escolha viaja na URL para o passo de pagamento.
+    // O backend só aceita inscrição em atividade com a inscrição no evento já
+    // confirmada, então a escolha viaja na URL até o passo de pagamento, onde
+    // `finalizarInscricao` a grava (ou a deixa pendente até o pagamento).
     const query = selecionadas.length
       ? `?atividades=${selecionadas.join(",")}`
       : "";

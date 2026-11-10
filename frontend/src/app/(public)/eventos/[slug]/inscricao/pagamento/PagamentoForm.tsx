@@ -38,6 +38,7 @@ import type {
   InscricaoEdicao,
   LoteIngresso,
   MetodoPagamento,
+  ResultadoAtividadesInscricao,
 } from "@/lib/types";
 
 import { finalizarInscricao } from "./actions";
@@ -56,6 +57,85 @@ const moedaFmt = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL",
 });
+
+/**
+ * Resultado da gravação das atividades escolhidas (RF05.3, RF05.4): o que foi
+ * inscrito, o que o backend recusou (conflito, lotação) e o que só pode ser
+ * gravado depois da confirmação do pagamento.
+ */
+function ResumoAtividades({
+  resultado,
+  atividades,
+  painelAtividadesHref,
+}: {
+  resultado: ResultadoAtividadesInscricao;
+  atividades: Atividade[];
+  painelAtividadesHref: string;
+}) {
+  const titulo = (id: string) =>
+    atividades.find((a) => a.id === id)?.titulo ?? `Atividade ${id}`;
+  const { inscritas, falhas, pendentes } = resultado;
+
+  if (inscritas.length + falhas.length + pendentes.length === 0) return null;
+
+  return (
+    <Stack spacing={1.5} sx={{ width: "100%", maxWidth: 440, textAlign: "left" }}>
+      {inscritas.length > 0 && (
+        <Alert severity="success">
+          <Typography variant="body2" sx={{ fontWeight: 700 }}>
+            Inscrito em {inscritas.length}{" "}
+            {inscritas.length === 1 ? "atividade" : "atividades"}:
+          </Typography>
+          <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
+            {inscritas.map((id) => (
+              <Typography component="li" variant="body2" key={id}>
+                {titulo(id)}
+              </Typography>
+            ))}
+          </Box>
+        </Alert>
+      )}
+
+      {falhas.length > 0 && (
+        <Alert
+          severity="warning"
+          action={
+            <Button color="inherit" size="small" href={painelAtividadesHref}>
+              Escolher
+            </Button>
+          }
+        >
+          <Typography variant="body2" sx={{ fontWeight: 700 }}>
+            Não foi possível inscrever em:
+          </Typography>
+          <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
+            {falhas.map((f) => (
+              <Typography component="li" variant="body2" key={f.id}>
+                {titulo(f.id)} — {f.erro}
+              </Typography>
+            ))}
+          </Box>
+        </Alert>
+      )}
+
+      {pendentes.length > 0 && (
+        <Alert
+          severity="info"
+          action={
+            <Button color="inherit" size="small" href={painelAtividadesHref}>
+              Ver atividades
+            </Button>
+          }
+        >
+          Você escolheu {pendentes.length}{" "}
+          {pendentes.length === 1 ? "atividade" : "atividades"}, mas a inscrição
+          nelas só é gravada depois que o pagamento for confirmado. Volte ao seu
+          painel para escolhê-las em seguida.
+        </Alert>
+      )}
+    </Stack>
+  );
+}
 
 const METODOS: {
   valor: Exclude<MetodoPagamento, "gratuito">;
@@ -142,6 +222,8 @@ export default function PagamentoForm({
   const [honeypot, setHoneypot] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [sucesso, setSucesso] = useState<InscricaoEdicao | null>(null);
+  const [resultadoAtividades, setResultadoAtividades] =
+    useState<ResultadoAtividadesInscricao | null>(null);
 
   const lote = disponiveis.find((l) => l.id === loteId) ?? null;
   const subtotal = lote?.preco ?? 0;
@@ -197,6 +279,7 @@ export default function PagamentoForm({
         // a confirmação aqui mesmo com o retorno da criação, sem navegar para
         // uma página que precisaria rebuscar por id.
         setSucesso(resultado.inscricao);
+        setResultadoAtividades(resultado.atividades);
         router.refresh();
       } catch {
         setErro("Não foi possível concluir a inscrição. Tente novamente.");
@@ -253,6 +336,15 @@ export default function PagamentoForm({
                 {moedaFmt.format(sucesso.valor)}
               </Typography>
             </Stack>
+
+            {resultadoAtividades && (
+              <ResumoAtividades
+                resultado={resultadoAtividades}
+                atividades={atividades}
+                painelAtividadesHref={`/painel/eventos/${eventoSlug}/atividades`}
+              />
+            )}
+
             <Stack
               direction={{ xs: "column", sm: "row" }}
               spacing={2}

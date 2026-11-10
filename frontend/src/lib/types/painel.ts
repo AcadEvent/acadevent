@@ -24,6 +24,8 @@ export interface AtividadeInscrita {
 /** Visão geral de um evento no painel pessoal (RF03.1.1). */
 export interface PainelEvento {
   slug: string;
+  /** id_edicao do backend — necessário para listar as atividades do evento. */
+  idEdicao?: number;
   nome: string;
   sigla?: string;
   edicao?: string;

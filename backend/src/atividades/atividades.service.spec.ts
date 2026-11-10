@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/unbound-method */
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
@@ -107,13 +108,16 @@ describe('AtividadesService', () => {
       id_participante: 10,
       id_usuario: 1,
     });
-    prisma.inscricaoEdicao.findFirst.mockResolvedValue({
-      id_inscricao_edicao: 100,
-      status: 'Pendente',
-    });
+    // A consulta já filtra por status Confirmada: sem nenhuma, não há inscrição.
+    prisma.inscricaoEdicao.findFirst.mockResolvedValue(null);
 
     await expect(service.inscrever(1, { id_atividade: 1 })).rejects.toThrow(
       ForbiddenException,
+    );
+    expect(prisma.inscricaoEdicao.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ status: 'Confirmada' }),
+      }),
     );
   });
 
@@ -285,6 +289,69 @@ describe('AtividadesService', () => {
     const resultado = await service.inscrever(1, { id_atividade: 2 });
     expect(resultado).toBeDefined();
     expect(prisma.inscricaoAtividade.create).toHaveBeenCalled();
+  });
+
+  describe('conflito de horário sem sala reservada', () => {
+    const inicio = new Date('2026-12-02T09:00:00Z');
+    const fim = new Date('2026-12-02T11:00:00Z');
+
+    function prepararInscricao(outra: { inicio: Date; fim: Date }): void {
+      prisma.atividade.findUnique.mockResolvedValue({
+        id_atividade: 2,
+        id_edicao: 1,
+        data_abertura_atividade: inicio,
+        data_encerramento_atividade: fim,
+        reservas: [],
+      });
+      prisma.perfilParticipante.findUnique.mockResolvedValue({
+        id_participante: 10,
+        id_usuario: 1,
+      });
+      prisma.inscricaoEdicao.findFirst.mockResolvedValue({
+        id_inscricao_edicao: 100,
+        status: 'Confirmada',
+      });
+      prisma.inscricaoAtividade.findMany.mockResolvedValue([
+        {
+          status: 'Inscrito',
+          atividade: {
+            titulo: 'Palestra de Abertura',
+            data_abertura_atividade: outra.inicio,
+            data_encerramento_atividade: outra.fim,
+            reservas: [],
+          },
+        },
+      ]);
+      prisma.inscricaoAtividade.count.mockResolvedValue(0);
+      prisma.inscricaoAtividade.create.mockResolvedValue({
+        id_inscricao_atividade: 2,
+        status: 'Inscrito',
+      });
+    }
+
+    it('deve lançar ConflictException quando as datas das atividades se sobrepõem', async () => {
+      prepararInscricao({
+        inicio: new Date('2026-12-02T10:00:00Z'),
+        fim: new Date('2026-12-02T12:00:00Z'),
+      });
+
+      await expect(service.inscrever(1, { id_atividade: 2 })).rejects.toThrow(
+        ConflictException,
+      );
+      expect(prisma.inscricaoAtividade.create).not.toHaveBeenCalled();
+    });
+
+    it('não deve haver conflito quando uma atividade começa quando a outra termina', async () => {
+      prepararInscricao({
+        inicio: new Date('2026-12-02T11:00:00Z'),
+        fim: new Date('2026-12-02T13:00:00Z'),
+      });
+
+      await expect(
+        service.inscrever(1, { id_atividade: 2 }),
+      ).resolves.toBeDefined();
+      expect(prisma.inscricaoAtividade.create).toHaveBeenCalled();
+    });
   });
 
   describe('AtividadesController - chamada sem JWT', () => {

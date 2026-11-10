@@ -64,7 +64,6 @@ export const mockEventos: Evento[] = [
  * Mantemos apenas os slugs aqui para reutilizar a mesma fonte de dados de
  * eventos e evitar cópias divergentes entre as telas.
  */
-export const mockMeusEventosSlugs = ["sitc-2026", "jornada-eng-2025"];
 
 export const mockMinistrantes: Ministrante[] = [
   {

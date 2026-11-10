@@ -71,6 +71,20 @@ export class InscricoesController {
   }
 
   @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Listar inscricoes de uma edicao (organizador do evento/admin)',
+  })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('organizador', 'administrador')
+  @Get('edicao/:id_edicao')
+  async listarInscricoesPorEdicao(
+    @Param('id_edicao', ParseIntPipe) idEdicao: number,
+    @CurrentUser() usuario: UsuarioAutenticadoRequest,
+  ) {
+    return this.inscricoesService.listarInscricoesPorEdicao(idEdicao, usuario);
+  }
+
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Listar cupons de uma edicao (organizador/admin)' })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('organizador', 'administrador')

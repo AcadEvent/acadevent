@@ -4,8 +4,9 @@
  * PROPÓSITO: Gestão de inscrições do evento — lista os inscritos e permite a
  *   confirmação manual de pagamento (RF04.5). Lotes/cupons ficam para depois.
  * COMPONENTES: PageHeader, Table + Dialog (InscricoesGestao), Chip, EmptyState
- * DADOS: getEvento(slug), getInscricoesDoEvento(slug) (via @/lib/api);
- *   confirmarPagamentoAction (via ./actions, no mesmo processo do mock)
+ * DADOS: getEvento(slug), getInscricoesDoEvento(token, idEdicao, slug)
+ *   (via @/lib/api — GET /inscricoes/edicao/:id); confirmarPagamentoAction
+ *   (via ./actions — POST /pagamentos/confirmar-manual)
  * ESTADOS: vazio (EmptyState) / erro (Alert). loading em ./loading.tsx (se houver).
  * DONE: responsivo, tokens do tema, estados cobertos.
  */
@@ -16,6 +17,8 @@ import Alert from "@mui/material/Alert";
 import PageHeader from "@/components/layout/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
 import { getEvento, getInscricoesDoEvento } from "@/lib/api";
+import { ErroRequisicao } from "@/lib/api/_client";
+import { getToken } from "@/lib/auth/session";
 import type { Evento, InscricaoEdicao } from "@/lib/types";
 
 import InscricoesGestao from "./InscricoesGestao";
@@ -32,16 +35,19 @@ export default async function InscricoesGestaoPage({
   const { slug } = await params;
 
   let evento: Evento | null;
-  let inscricoes: InscricaoEdicao[];
+  let inscricoes: InscricaoEdicao[] = [];
   try {
-    [evento, inscricoes] = await Promise.all([
-      getEvento(slug),
-      getInscricoesDoEvento(slug),
-    ]);
-  } catch {
+    evento = await getEvento(slug);
+    const token = await getToken();
+    if (evento?.idEdicao && token) {
+      inscricoes = await getInscricoesDoEvento(token, evento.idEdicao, slug);
+    }
+  } catch (e) {
     return (
       <Alert severity="error">
-        Não foi possível carregar as inscrições. Tente novamente mais tarde.
+        {e instanceof ErroRequisicao && e.status === 403
+          ? "Apenas o organizador do evento ou um administrador pode ver as inscrições."
+          : "Não foi possível carregar as inscrições. Tente novamente mais tarde."}
       </Alert>
     );
   }

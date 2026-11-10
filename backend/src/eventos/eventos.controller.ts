@@ -39,6 +39,33 @@ export class EventosController {
     return this.eventosService.listarPorOrganizador(usuario.id_usuario);
   }
 
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Listar eventos em que o participante autenticado esta inscrito',
+  })
+  @UseGuards(JwtAuthGuard)
+  @Get('participante/meus')
+  listarMinhasParticipacoes(@CurrentUser() usuario: { id_usuario: number }) {
+    return this.eventosService.listarPorParticipante(usuario.id_usuario);
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Painel pessoal do participante autenticado em um evento (RF03.1.1)',
+  })
+  @UseGuards(JwtAuthGuard)
+  @Get('participante/meus/:slug')
+  buscarMeuPainel(
+    @Param('slug') slug: string,
+    @CurrentUser() usuario: { id_usuario: number },
+  ) {
+    return this.eventosService.buscarPainelParticipante(
+      usuario.id_usuario,
+      slug,
+    );
+  }
+
   @ApiOperation({
     summary: 'Buscar detalhes do evento pelo slug ou id (RF01.5)',
   })

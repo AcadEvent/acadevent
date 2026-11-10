@@ -33,8 +33,14 @@ import PlaceIcon from "@mui/icons-material/Place";
 
 import EmptyState from "@/components/ui/EmptyState";
 import PageHeader from "@/components/layout/PageHeader";
-import { getEvento, getLotes } from "@/lib/api";
-import type { Evento, LoteIngresso, StatusInscricao } from "@/lib/types";
+import { getEvento, getLotes, getPainelEvento } from "@/lib/api";
+import { getToken } from "@/lib/auth/session";
+import type {
+  Evento,
+  LoteIngresso,
+  PainelEvento,
+  StatusInscricao,
+} from "@/lib/types";
 
 import IniciarInscricao from "./IniciarInscricao";
 import { BLOQUEIO, PASSOS } from "./wizard";
@@ -126,9 +132,18 @@ export default async function InscricaoPage({
 
   let evento: Evento | null;
   let lotes: LoteIngresso[];
+  let inscricaoExistente: PainelEvento | null = null;
   try {
     evento = await getEvento(slug);
     lotes = evento?.idEdicao ? await getLotes(evento.idEdicao) : [];
+
+    // Quem já tem inscrição ativa no evento não se inscreve de novo: o backend
+    // recusa (409), e aqui a pessoa já é encaminhada em vez de errar no fim do
+    // fluxo. Falha nessa consulta não bloqueia o fluxo.
+    const token = evento ? await getToken() : null;
+    if (token) {
+      inscricaoExistente = await getPainelEvento(slug, token).catch(() => null);
+    }
   } catch {
     return (
       <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
@@ -215,10 +230,38 @@ export default async function InscricaoPage({
       <Grid container spacing={4}>
         {/* Passo 1 — revisão e aceite dos termos */}
         <Grid size={{ xs: 12, md: 7 }}>
-          <IniciarInscricao
-            eventoSlug={evento.slug}
-            bloqueado={Boolean(bloqueio)}
-          />
+          {inscricaoExistente ? (
+            <Alert
+              severity={
+                inscricaoExistente.statusInscricao === "confirmada"
+                  ? "success"
+                  : "warning"
+              }
+              action={
+                <Button
+                  color="inherit"
+                  size="small"
+                  href={`/painel/eventos/${evento.slug}`}
+                >
+                  Ir para o painel
+                </Button>
+              }
+            >
+              <AlertTitle>
+                {inscricaoExistente.statusInscricao === "confirmada"
+                  ? "Você já está inscrito neste evento"
+                  : "Você já tem uma inscrição pendente"}
+              </AlertTitle>
+              {inscricaoExistente.statusInscricao === "confirmada"
+                ? "Sua inscrição está confirmada. Veja e escolha suas atividades no painel do evento."
+                : "Conclua o pagamento para confirmar a inscrição. Não é preciso se inscrever de novo."}
+            </Alert>
+          ) : (
+            <IniciarInscricao
+              eventoSlug={evento.slug}
+              bloqueado={Boolean(bloqueio)}
+            />
+          )}
         </Grid>
 
         {/* Resumo do evento e do ingresso (somente leitura) */}

@@ -16,7 +16,6 @@ import type { DashboardEvento } from "@/lib/types";
 import {
   mockAtividades,
   mockEventos,
-  mockMeusEventosSlugs,
   mockMinistrantes,
 } from "@/lib/mock/eventos";
 import { mockDashboardIndicadores } from "@/lib/mock/eventos";
@@ -105,11 +104,18 @@ export async function getEventosGerenciaveis(token: string): Promise<Evento[]> {
   return dados.map(edicaoToEvento);
 }
 
-/** Eventos dos quais o participante autenticado faz parte (RF03.1.1). */
-export function getMeusEventos(): Promise<Evento[]> {
-  return fake(
-    mockEventos.filter((evento) => mockMeusEventosSlugs.includes(evento.slug)),
-  );
+/**
+ * Eventos em que o participante autenticado está inscrito (GET
+ * /eventos/participante/meus, RF03.1.1). Precisa do Bearer da sessão.
+ */
+export async function getMeusEventos(token: string): Promise<Evento[]> {
+  const res = await fetch(`${API_URL}/eventos/participante/meus`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Não foi possível carregar seus eventos.");
+  const dados = (await res.json()) as EdicaoApi[];
+  return dados.map(edicaoToEvento);
 }
 
 export async function getEvento(slug: string): Promise<Evento | null> {
