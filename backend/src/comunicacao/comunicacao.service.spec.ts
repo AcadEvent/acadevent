@@ -17,6 +17,8 @@ describe('Comunicacao (Controller & Service)', () => {
   let app: INestApplication;
 
   const mockPrismaService = {
+    // Consultado pela JwtStrategy; sem registros vale o perfil do token.
+    perfilUsuario: { findMany: jest.fn().mockResolvedValue([]) },
     edicao: {
       findUnique: jest.fn(),
     },
