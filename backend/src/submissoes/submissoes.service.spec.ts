@@ -17,6 +17,7 @@ import { SubmissoesService } from './submissoes.service';
 process.env.JWT_SECRET = 'test_secret_for_submissoes_spec';
 
 interface MockPrismaService {
+  perfilUsuario: { findMany: jest.Mock };
   trabalhoAcademico: { findUnique: jest.Mock };
   perfilParecerista: { findUnique: jest.Mock };
   $queryRaw: jest.Mock;
@@ -31,6 +32,8 @@ describe('Submissoes (Controller & Service)', () => {
 
   beforeAll(async () => {
     prisma = {
+      // Consultado pela JwtStrategy; sem registros vale o perfil do token.
+      perfilUsuario: { findMany: jest.fn().mockResolvedValue([]) },
       trabalhoAcademico: { findUnique: jest.fn() },
       perfilParecerista: { findUnique: jest.fn() },
       $queryRaw: jest

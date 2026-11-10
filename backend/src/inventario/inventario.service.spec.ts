@@ -18,6 +18,7 @@ import { InventarioService } from './inventario.service';
 process.env.JWT_SECRET = 'test_secret_for_inventario_spec';
 
 interface MockPrismaService {
+  perfilUsuario: { findMany: jest.Mock };
   edicao: { findUnique: jest.Mock };
   itemInventarioFisico: {
     findUnique: jest.Mock;
@@ -44,6 +45,8 @@ describe('Inventario (Controller & Service)', () => {
 
   beforeAll(async () => {
     prisma = {
+      // Consultado pela JwtStrategy; sem registros vale o perfil do token.
+      perfilUsuario: { findMany: jest.fn().mockResolvedValue([]) },
       edicao: { findUnique: jest.fn() },
       itemInventarioFisico: {
         findUnique: jest.fn(),

@@ -24,6 +24,8 @@ describe('Pagamentos (Controller & Service)', () => {
   let jwtService: JwtService;
 
   const mockPrismaService = {
+    // Consultado pela JwtStrategy; sem registros vale o perfil do token.
+    perfilUsuario: { findMany: jest.fn().mockResolvedValue([]) },
     inscricaoEdicao: {
       findUnique: jest.fn(),
       update: jest.fn(),
