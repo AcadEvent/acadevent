@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -84,6 +85,83 @@ export class InscricoesService {
     });
   }
 
+  /**
+   * Inscricoes de uma edicao para a gestao do evento (RF04.1): participante,
+   * lote, cupom, pagamento e quantidade de atividades. Expoe nome e e-mail dos
+   * participantes, entao so o organizador do evento ou um administrador le.
+   */
+  async listarInscricoesPorEdicao(
+    idEdicao: number,
+    usuario: { id_usuario: number; perfis?: string[] },
+  ) {
+    const edicao = await this.prisma.edicao.findUnique({
+      where: { id_edicao: idEdicao },
+      include: { evento: { include: { organizador: true } } },
+    });
+
+    if (!edicao) {
+      throw new NotFoundException('Edicao do evento nao encontrada.');
+    }
+
+    const ehAdmin = (usuario.perfis ?? []).some(
+      (p) => typeof p === 'string' && p.toLowerCase() === 'administrador',
+    );
+    const ehOrganizadorDoEvento =
+      edicao.evento?.organizador?.id_usuario === usuario.id_usuario;
+
+    if (!ehAdmin && !ehOrganizadorDoEvento) {
+      throw new ForbiddenException(
+        'Apenas o organizador do evento ou administradores podem ver as inscricoes.',
+      );
+    }
+
+    const inscricoes = await this.prisma.inscricaoEdicao.findMany({
+      where: { lote: { id_edicao: idEdicao } },
+      include: {
+        participante: {
+          include: { usuario: { select: { nome: true, email: true } } },
+        },
+        lote: true,
+        cupom: true,
+        pagamentos: { orderBy: { id_pagamento: 'desc' }, take: 1 },
+        _count: { select: { inscricoesAtividades: true } },
+      },
+      orderBy: { id_inscricao_edicao: 'desc' },
+    });
+
+    return inscricoes.map((i) => {
+      const pagamento = i.pagamentos[0];
+      return {
+        id_inscricao_edicao: i.id_inscricao_edicao,
+        status: i.status,
+        participante: {
+          nome: i.participante.usuario.nome,
+          email: i.participante.usuario.email,
+        },
+        lote: {
+          id_lote: i.lote.id_lote,
+          nome_lote: i.lote.nome_lote,
+          preco: Number(i.lote.preco),
+        },
+        cupom: i.cupom
+          ? {
+              codigo: i.cupom.codigo,
+              percentual_desconto: i.cupom.percentual_desconto,
+            }
+          : null,
+        pagamento: pagamento
+          ? {
+              status: pagamento.status,
+              valor: Number(pagamento.valor),
+              metodo_pagamento: pagamento.metodo_pagamento,
+              data_pagamento: pagamento.data_pagamento,
+            }
+          : null,
+        atividades_inscritas: i._count.inscricoesAtividades,
+      };
+    });
+  }
+
   async criarInscricao(usuarioId: number, dto: CriarInscricaoDto) {
     const lote = await this.prisma.loteIngresso.findUnique({
       where: { id_lote: dto.id_lote },
@@ -144,6 +222,29 @@ export class InscricoesService {
     const isGratuito = valorFinal.lte(0);
 
     return this.prisma.$transaction(async (tx) => {
+      // Uma inscricao ativa por participante em cada evento. O lock serializa
+      // envios simultaneos (duplo clique, voltar e reenviar): sem ele, os dois
+      // passariam pela checagem abaixo antes de qualquer um gravar.
+      // $executeRaw (e nao $queryRaw): a funcao devolve void, que o Prisma nao
+      // consegue desserializar numa consulta.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(${perfilParticipante.id_participante}::int, ${lote.id_edicao}::int)`;
+
+      const inscricaoAtiva = await tx.inscricaoEdicao.findFirst({
+        where: {
+          id_participante: perfilParticipante.id_participante,
+          status: { notIn: ['Cancelada', 'Estornada'] },
+          lote: { id_edicao: lote.id_edicao },
+        },
+      });
+
+      if (inscricaoAtiva) {
+        throw new ConflictException(
+          inscricaoAtiva.status === 'Confirmada'
+            ? 'Voce ja esta inscrito neste evento.'
+            : 'Voce ja possui uma inscricao pendente neste evento. Conclua o pagamento dela.',
+        );
+      }
+
       const inscricao = await spRealizarInscricaoEdicao(tx, {
         id_participante: perfilParticipante.id_participante,
         id_lote: lote.id_lote,
